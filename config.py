@@ -19,6 +19,7 @@ AI_COUNTRY: str = os.getenv("AI_COUNTRY", "Thailand")
 AI_CITY: str = os.getenv("AI_CITY", "Bangkok")
 
 DATABASE_PATH: str = os.getenv("DATABASE_PATH", "data/companion.db")
+DATA_DIR: str = os.getenv("DATA_DIR", "data")
 BACKUP_DIR: str = os.getenv("BACKUP_DIR", "data/backups")
 BACKUP_INTERVAL_HOURS: int = 6
 BACKUP_MAX_COUNT: int = 48
