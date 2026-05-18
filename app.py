@@ -1,11 +1,13 @@
 import asyncio
 import json
 import os
+import socket
 import sys
 import time
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 
+import aiohttp
 import gradio as gr
 import pytz
 from loguru import logger
@@ -28,6 +30,7 @@ _supervisor: Optional[WorkerSupervisor] = None
 _current_user_id: str = "default"
 _current_character_id: str = "default"
 _telegram_app: Optional[Any] = None
+_telegram_update_queue: Optional[asyncio.Queue] = None
 _bot_tasks: List[asyncio.Task] = []
 
 
@@ -540,274 +543,421 @@ Discord: {"✅" if config.DISCORD_BOT_TOKEN else "❌"}""",
     return ui
 
 
+# --- Telegram multi-strategy connection ---
+
+_TELEGRAM_API_IPS = [
+    "149.154.167.220",
+    "149.154.167.221",
+    "149.154.167.222",
+    "149.154.167.251",
+]
+
+
+class _AiohttpTelegramClient:
+    """Raw Telegram Bot API client using aiohttp with custom DNS (bypasses system DNS)."""
+
+    def __init__(self, token: str, ip: str):
+        self.token = token
+        self.ip = ip
+        self._session: Optional[aiohttp.ClientSession] = None
+        self._offset: Optional[int] = None
+
+    async def _session_get(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            import ssl
+            ssl_ctx = ssl.create_default_context()
+
+            class _ResolvedConnector(aiohttp.TCPConnector):
+                def __init__(self_, _ip, **kw):
+                    self_._telegram_ip = _ip
+                    super().__init__(**kw)
+
+                async def _resolve_host(self_, host, port, family=0):
+                    return [{
+                        "hostname": "api.telegram.org",
+                        "host": self_._telegram_ip,
+                        "port": port, "family": socket.AF_INET, "proto": 0, "flags": 0,
+                    }]
+
+            self._session = aiohttp.ClientSession(connector=_ResolvedConnector(self.ip, ssl=ssl_ctx))
+        return self._session
+
+    async def _api(self, method: str, **kwargs) -> dict:
+        sess = await self._session_get()
+        url = f"https://api.telegram.org/bot{self.token}/{method}"
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        async with sess.post(url, json=kwargs) as resp:
+            return await resp.json()
+
+    async def get_me(self) -> str:
+        data = await self._api("getMe")
+        if data.get("ok"):
+            return data["result"]["username"]
+        raise ConnectionError(data.get("description", "getMe failed"))
+
+    async def send_message(self, chat_id: int, text: str, **kw) -> None:
+        await self._api("sendMessage", chat_id=chat_id, text=text, **kw)
+
+    async def send_chat_action(self, chat_id: int, action: str = "typing") -> None:
+        await self._api("sendChatAction", chat_id=chat_id, action=action)
+
+    async def get_updates(self, timeout: int = 30) -> list:
+        data = await self._api("getUpdates", offset=self._offset, timeout=timeout, allowed_updates=["message"])
+        if data.get("ok"):
+            updates = data["result"]
+            if updates:
+                self._offset = updates[-1]["update_id"] + 1
+            return updates
+        logger.warning(f"getUpdates error: {data.get('description', 'unknown')}")
+        return []
+
+    async def close(self) -> None:
+        if self._session and not self._session.closed:
+            await self._session.close()
+
+
+async def _try_ptb(proxy_url: Optional[str] = None):
+    """Try connecting via python-telegram-bot (proxy or direct)."""
+    try:
+        from telegram import Bot
+        from telegram.request import HTTPXRequest
+        bot = Bot(
+            token=config.TELEGRAM_BOT_TOKEN,
+            request=HTTPXRequest(connect_timeout=15, read_timeout=15),
+            **(dict(base_url=proxy_url) if proxy_url else {}),
+        )
+        info = await bot.get_me()
+        logger.info(f"Telegram PTB {'proxy' if proxy_url else 'direct'}: @{info.username}")
+        return bot, None
+    except Exception as e:
+        logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} failed: {e}")
+        return None, None
+
+
+async def _try_aiohttp():
+    """Try aiohttp with hardcoded IPs (bypasses system DNS entirely)."""
+    for ip in _TELEGRAM_API_IPS:
+        try:
+            client = _AiohttpTelegramClient(config.TELEGRAM_BOT_TOKEN, ip)
+            username = await client.get_me()
+            logger.info(f"Telegram aiohttp IP {ip}: @{username}")
+            return None, client
+        except Exception as e:
+            logger.warning(f"aiohttp IP {ip} failed: {e}")
+    return None, None
+
+
+async def _try_webhook_register() -> bool:
+    """Register Telegram webhook on the HF Space URL (last resort)."""
+    try:
+        space_url = (os.getenv("SPACE_URL") or os.getenv("HF_ENDPOINT") or "")
+        if not space_url:
+            return False
+        webhook_url = f"{space_url.rstrip('/')}/webhook/telegram"
+        import httpx
+        async with httpx.AsyncClient(timeout=15) as cl:
+            r = await cl.post(
+                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/setWebhook",
+                json={"url": webhook_url, "allowed_updates": ["message"]},
+            )
+            ok = r.json().get("ok")
+            if ok:
+                logger.info(f"Telegram webhook registered: {webhook_url}")
+            return bool(ok)
+    except Exception as e:
+        logger.warning(f"Webhook register failed: {e}")
+        return False
+
+
 async def _run_telegram_bot() -> None:
     global _telegram_app
-    try:
-        if not config.TELEGRAM_BOT_TOKEN:
-            logger.info("TELEGRAM_BOT_TOKEN not set, skipping Telegram bot")
+    if not config.TELEGRAM_BOT_TOKEN:
+        logger.info("TELEGRAM_BOT_TOKEN not set, skipping Telegram bot")
+        return
+
+    _msg_tracker: Dict[int, tuple] = {}
+
+    async def _rapid(uid: int) -> Optional[float]:
+        now = time.time()
+        if uid not in _msg_tracker:
+            _msg_tracker[uid] = (now, 0)
+            return None
+        ts, c = _msg_tracker[uid]
+        if now - ts > config.RAPID_FIRE_WINDOW_SECONDS:
+            _msg_tracker[uid] = (now, 0)
+            return None
+        c += 1
+        _msg_tracker[uid] = (now, c)
+        return -1 if c >= config.RAPID_FIRE_MAX_BEFORE_SKIP else c * 3.0
+
+    # ---- Connection strategies ----
+    ptb_bot = None
+    aio_bot: Optional[_AiohttpTelegramClient] = None
+    strategy = ""
+
+    if config.TELEGRAM_API_PROXY:
+        ptb_bot, _ = await _try_ptb(config.TELEGRAM_API_PROXY)
+        if ptb_bot:
+            strategy = "proxy"
+
+    if not ptb_bot and not aio_bot:
+        ptb_bot, _ = await _try_ptb()
+        if ptb_bot:
+            strategy = "direct"
+
+    if not ptb_bot and not aio_bot:
+        _, aio_bot = await _try_aiohttp()
+        if aio_bot:
+            strategy = "aiohttp-ip"
+
+    if not ptb_bot and not aio_bot:
+        webhook_ok = await _try_webhook_register()
+        if webhook_ok:
+            strategy = "webhook"
+
+    if not ptb_bot and not aio_bot and not webhook_ok:
+        logger.warning("All Telegram strategies failed — skipping")
+        return
+
+    logger.info(f"Telegram strategy: {strategy}")
+    _telegram_app = ptb_bot or aio_bot or "webhook"
+
+    # ---- Helpers ----
+    async def _send(chat_id: int, text: str) -> None:
+        if aio_bot:
+            await aio_bot.send_message(chat_id=chat_id, text=text)
+        elif ptb_bot:
+            await ptb_bot.send_message(chat_id=chat_id, text=text)
+
+    async def _action(chat_id: int) -> None:
+        if aio_bot:
+            await aio_bot.send_chat_action(chat_id=chat_id)
+        elif ptb_bot:
+            await ptb_bot.send_chat_action(chat_id=chat_id, action="typing")
+
+    # ---- Proactive callback ----
+    async def _telegram_send(char_id: str, msg: str) -> None:
+        if not char_id.startswith("telegram_"):
             return
-        from telegram import Bot, Update
-        from telegram.request import HTTPXRequest
-        req = HTTPXRequest(connect_timeout=15, read_timeout=15, pool_timeout=15)
-        bot_kwargs = dict(token=config.TELEGRAM_BOT_TOKEN, request=req)
-        if config.TELEGRAM_API_PROXY:
-            bot_kwargs["base_url"] = config.TELEGRAM_API_PROXY
-        bot = Bot(**bot_kwargs)
-        _telegram_app = bot
-
-        for attempt in range(2):
-            try:
-                bot_info = await bot.get_me()
-                logger.info(f"Telegram bot connected: @{bot_info.username}")
-                break
-            except Exception as e:
-                if attempt == 0:
-                    logger.warning(f"Telegram connect attempt 1 failed: {e}, retrying...")
-                    await asyncio.sleep(3)
-                else:
-                    logger.warning(f"Telegram not available on this network (2 attempts failed: {e})")
-                    return
-
-        _msg_tracker: Dict[int, tuple] = {}
-
-        async def _check_rapid_fire(uid: int) -> Optional[float]:
-            now = time.time()
-            if uid not in _msg_tracker:
-                _msg_tracker[uid] = (now, 0)
-                return None
-            last_ts, count = _msg_tracker[uid]
-            gap = now - last_ts
-            if gap > config.RAPID_FIRE_WINDOW_SECONDS:
-                _msg_tracker[uid] = (now, 0)
-                return None
-            count += 1
-            _msg_tracker[uid] = (now, count)
-            if count >= config.RAPID_FIRE_MAX_BEFORE_SKIP:
-                return -1
-            return count * 3.0
-
-        async def _telegram_send(char_id: str, msg: str) -> None:
-            if not char_id.startswith("telegram_"):
-                return
-            try:
-                uid = int(char_id[len("telegram_"):])
-            except ValueError:
-                return
-            buckets = TextSplitter.split(msg)
-            for i, bucket in enumerate(buckets):
-                if bucket.strip():
-                    try:
-                        await bot.send_message(chat_id=uid, text=bucket.strip())
-                    except Exception as e:
-                        logger.warning(f"Telegram proactive send failed: {e}")
-                    if i < len(buckets) - 1:
-                        await asyncio.sleep(0.8)
-
-        if _supervisor:
-            _supervisor.proactive_text.register_send_callback(_telegram_send)
-            _supervisor.jealousy_scheduler.register_send_callback(_telegram_send)
-
-        async def _get_or_create_char_for_user(telegram_user_id: int) -> str:
-            user_id = f"telegram_{telegram_user_id}"
-            profiles = await database.get_character_profiles(user_id)
-            if profiles:
-                return profiles[0]["character_id"]
-            char_id = await database.create_character_profile(
-                user_id=user_id,
-                name=config.DEFAULT_CHARACTER_NAME,
-                gender=config.DEFAULT_CHARACTER_GENDER,
-                country=config.AI_COUNTRY,
-                city=config.AI_CITY,
-                lore="",
-            )
-            await database.get_personality_dna(user_id, char_id)
-            await database.get_psychological_state(user_id, char_id)
-            return char_id
-
-        async def handle_text(uid: int, chat_id: int, text: str) -> None:
-            rapid = await _check_rapid_fire(uid)
-            if rapid == -1:
-                return
-            user_id = f"telegram_{uid}"
-            char_id = await _get_or_create_char_for_user(uid)
-            try:
-                presence = await PresenceManager.get_presence(char_id)
-                psych = await database.get_psychological_state(user_id, char_id)
-                dna = await database.get_personality_dna(user_id, char_id)
-                read_delay, presence_ctx = await PresenceManager.calculate_delay_and_context(presence, psych, dna)
-
-                total_delay = read_delay + (rapid or 0)
-                await bot.send_chat_action(chat_id=chat_id, action="typing")
-                if total_delay > 3:
-                    await asyncio.sleep(2)
-                    await bot.send_chat_action(chat_id=chat_id, action="typing")
-                    remaining = total_delay - 2
-                    if remaining > 0:
-                        await asyncio.sleep(remaining)
-                else:
-                    await asyncio.sleep(total_delay)
-
-                response = await process_chat(
-                    user_message=text,
-                    user_id=user_id,
-                    character_id=char_id,
-                    platform="telegram",
-                    presence_context_data=(read_delay, presence_ctx),
-                )
-
-                buckets = TextSplitter.split(response)
-                if not buckets:
-                    return
-                for i, bucket in enumerate(buckets):
-                    if bucket.strip():
-                        bucket_delay = PresenceManager.calculate_typing_delay(bucket, dna)
-                        if bucket_delay > 1:
-                            await asyncio.sleep(1)
-                            await bot.send_chat_action(chat_id=chat_id, action="typing")
-                            await asyncio.sleep(bucket_delay - 1)
-                        elif bucket_delay > 0:
-                            await asyncio.sleep(bucket_delay)
-                        await bot.send_message(chat_id=chat_id, text=bucket.strip())
-                        if i < len(buckets) - 1:
-                            await asyncio.sleep(0.8)
-            except Exception as e:
-                logger.error(f"Telegram handle_text error: {e}")
+        try:
+            uid = int(char_id[len("telegram_"):])
+        except ValueError:
+            return
+        buckets = TextSplitter.split(msg)
+        for i, b in enumerate(buckets):
+            if b.strip():
                 try:
-                    await bot.send_message(chat_id=chat_id, text="...sorry, give me a moment.")
-                except Exception:
-                    pass
+                    await _send(uid, b.strip())
+                except Exception as e:
+                    logger.warning(f"Telegram proactive send failed: {e}")
+                if i < len(buckets) - 1:
+                    await asyncio.sleep(0.8)
 
-        async def handle_start(uid: int, chat_id: int) -> None:
-            char_id = await _get_or_create_char_for_user(uid)
-            char = await database.get_character_profile(char_id)
-            name = char["name"] if char else config.DEFAULT_CHARACTER_NAME
-            await bot.send_message(
-                chat_id=chat_id,
-                text=f"Hi! I'm {name}, nice to meet you! 💕\n\n"
-                     f"Just type anything and we can chat!\n\n"
-                     f"Commands:\n"
-                     f"/info — View character info\n"
-                     f"/mood happy|sad|angry|anxious — Change mood\n"
-                     f"/stage Stranger|Friend|Crush|Dating|Lover — Change relationship stage\n"
-                     f"/name <new name> — Change character name\n"
-                     f"/country <country> — Set character country\n"
-                     f"/city <city> — Set character city\n"
-                     f"/lore — View current lore\n"
-                     f"/lore_set <text> — Set new lore",
-            )
+    if _supervisor:
+        _supervisor.proactive_text.register_send_callback(_telegram_send)
+        _supervisor.jealousy_scheduler.register_send_callback(_telegram_send)
 
-        async def handle_info(uid: int, chat_id: int) -> None:
-            user_id = f"telegram_{uid}"
-            char_id = await _get_or_create_char_for_user(uid)
-            char = await database.get_character_profile(char_id)
+    # ---- User/character helpers ----
+    async def _get_or_create_char(uid: int) -> str:
+        user_id = f"telegram_{uid}"
+        profiles = await database.get_character_profiles(user_id)
+        if profiles:
+            return profiles[0]["character_id"]
+        char_id = await database.create_character_profile(
+            user_id=user_id, name=config.DEFAULT_CHARACTER_NAME,
+            gender=config.DEFAULT_CHARACTER_GENDER, country=config.AI_COUNTRY,
+            city=config.AI_CITY, lore="",
+        )
+        await database.get_personality_dna(user_id, char_id)
+        await database.get_psychological_state(user_id, char_id)
+        return char_id
+
+    # ---- Message handlers ----
+    async def handle_text(uid: int, chat_id: int, text: str) -> None:
+        fast = await _rapid(uid)
+        if fast == -1:
+            return
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        try:
+            presence = await PresenceManager.get_presence(char_id)
             psych = await database.get_psychological_state(user_id, char_id)
             dna = await database.get_personality_dna(user_id, char_id)
-            lines = [
-                f"🎭 **{char['name']}** ({char['gender']})",
-                f"📍 {char.get('city', '?')}, {char.get('country', '?')}",
-                f"📖 Stage: **{psych.get('relationship_stage', 'Stranger')}**",
-                f"😊 Mood: **{psych.get('short_term_mood', 'happy')}**",
-                f"❤️ Affinity: {psych.get('affinity', 0):.1f}",
-                f"🤝 Trust: {psych.get('trust', 0):.1f}",
-                f"🍼 Nurture: {psych.get('nurture_points', 0)}",
-                f"👻 Neglect: {psych.get('neglect_points', 0)}",
-                "",
-                "**Base Traits:**",
-                f"  Responsibility: {dna.get('responsibility', 0.5):.2f}",
-                f"  Social Butterfly: {dna.get('social_butterfly', 0.5):.2f}",
-                f"  Anxiety: {dna.get('anxiety_and_insecurity', 0.5):.2f}",
-                f"  Jealousy: {dna.get('jealousy_tendency', 0.5):.2f}",
-                f"  Loyalty: {dna.get('loyalty', 0.5):.2f}",
-                f"  Patience: {dna.get('patience', 0.5):.2f}",
-                f"  Playfulness: {dna.get('playfulness', 0.5):.2f}",
-                "",
-                f"💬 Lore: {char.get('lore', '(none)')[:200]}",
-            ]
-            await bot.send_message(chat_id=chat_id, text="\n".join(lines))
+            read_delay, presence_ctx = await PresenceManager.calculate_delay_and_context(presence, psych, dna)
+            total = read_delay + (fast or 0)
 
-        async def handle_set(uid: int, chat_id: int, cmd: str, val: str) -> None:
-            user_id = f"telegram_{uid}"
-            char_id = await _get_or_create_char_for_user(uid)
-            if cmd == "mood":
-                if val not in config.MOOD_STATES:
-                    await bot.send_message(chat_id=chat_id, text=f"❌ Invalid mood. Choose: {', '.join(config.MOOD_STATES)}")
-                    return
-                psych = await database.get_psychological_state(user_id, char_id)
-                psych["short_term_mood"] = val
-                await database.upsert_psychological_state(user_id, psych, char_id)
-                await bot.send_message(chat_id=chat_id, text=f"✅ Mood changed to **{val}**")
-            elif cmd == "stage":
-                if val not in config.RELATIONSHIP_STAGES:
-                    await bot.send_message(chat_id=chat_id, text=f"❌ Invalid stage. Choose: {', '.join(config.RELATIONSHIP_STAGES)}")
-                    return
-                psych = await database.get_psychological_state(user_id, char_id)
-                psych["relationship_stage"] = val
-                await database.upsert_psychological_state(user_id, psych, char_id)
-                await bot.send_message(chat_id=chat_id, text=f"✅ Relationship stage changed to **{val}**")
-            elif cmd == "name":
-                await database.update_character_profile(char_id, {"name": val})
-                await bot.send_message(chat_id=chat_id, text=f"✅ Name changed to **{val}**")
-            elif cmd == "country":
-                await database.update_character_profile(char_id, {"country": val})
-                await bot.send_message(chat_id=chat_id, text=f"✅ Country changed to **{val}**")
-            elif cmd == "city":
-                await database.update_character_profile(char_id, {"city": val})
-                await bot.send_message(chat_id=chat_id, text=f"✅ City changed to **{val}**")
-
-        async def handle_lore(uid: int, chat_id: int, text: str = "") -> None:
-            user_id = f"telegram_{uid}"
-            char_id = await _get_or_create_char_for_user(uid)
-            char = await database.get_character_profile(char_id)
-            if not text:
-                lore = char.get("lore", "(none)")
-                await bot.send_message(chat_id=chat_id, text=f"📖 Current lore:\n\n{lore}")
+            await _action(chat_id)
+            if total > 3:
+                await asyncio.sleep(2)
+                await _action(chat_id)
+                left = total - 2
+                if left > 0:
+                    await asyncio.sleep(left)
             else:
-                await database.update_character_profile(char_id, {"lore": text})
-                await bot.send_message(chat_id=chat_id, text=f"✅ Lore saved! ({len(text)} chars)")
+                await asyncio.sleep(total)
 
-        offset = None
-        logger.info("Telegram polling started (direct)")
-        while True:
+            response = await process_chat(
+                user_message=text, user_id=user_id, character_id=char_id,
+                platform="telegram", presence_context_data=(read_delay, presence_ctx),
+            )
+            buckets = TextSplitter.split(response)
+            for i, b in enumerate(buckets):
+                if b.strip():
+                    delay = PresenceManager.calculate_typing_delay(b, dna)
+                    if delay > 1:
+                        await asyncio.sleep(1)
+                        await _action(chat_id)
+                        await asyncio.sleep(delay - 1)
+                    elif delay > 0:
+                        await asyncio.sleep(delay)
+                    await _send(chat_id, b.strip())
+                    if i < len(buckets) - 1:
+                        await asyncio.sleep(0.8)
+        except Exception as e:
+            logger.error(f"Telegram handle_text: {e}")
             try:
-                updates = await bot.get_updates(
-                    offset=offset,
-                    timeout=30,
-                    allowed_updates=["messages"],
-                )
-                for update in updates:
-                    offset = update.update_id + 1
-                    if not update.message or not update.message.text:
+                await _send(chat_id, "...sorry, give me a moment.")
+            except Exception:
+                pass
+
+    async def handle_start(uid: int, chat_id: int) -> None:
+        char_id = await _get_or_create_char(uid)
+        char = await database.get_character_profile(char_id)
+        name = char["name"] if char else config.DEFAULT_CHARACTER_NAME
+        await _send(chat_id, f"Hi! I'm {name}, nice to meet you! 💕\n\n"
+            f"Just type anything and we can chat!\n\nCommands:\n"
+            f"/info — View character info\n/mood happy|sad|angry|anxious — Change mood\n"
+            f"/stage Stranger|Friend|Crush|Dating|Lover — Change relationship stage\n"
+            f"/name <new name> — Change character name\n/country <country> — Set country\n"
+            f"/city <city> — Set city\n/lore — View lore\n/lore_set <text> — Set lore")
+
+    async def handle_info(uid: int, chat_id: int) -> None:
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        char = await database.get_character_profile(char_id)
+        psych = await database.get_psychological_state(user_id, char_id)
+        dna = await database.get_personality_dna(user_id, char_id)
+        lines = [
+            f"🎭 **{char['name']}** ({char['gender']})",
+            f"📍 {char.get('city', '?')}, {char.get('country', '?')}",
+            f"📖 Stage: **{psych.get('relationship_stage', 'Stranger')}**",
+            f"😊 Mood: **{psych.get('short_term_mood', 'happy')}**",
+            f"❤️ Affinity: {psych.get('affinity', 0):.1f}",
+            f"🤝 Trust: {psych.get('trust', 0):.1f}",
+            f"🍼 Nurture: {psych.get('nurture_points', 0)}",
+            f"👻 Neglect: {psych.get('neglect_points', 0)}",
+            "", "**Base Traits:**",
+            f"  Responsibility: {dna.get('responsibility', 0.5):.2f}",
+            f"  Social: {dna.get('social_butterfly', 0.5):.2f}",
+            f"  Anxiety: {dna.get('anxiety_and_insecurity', 0.5):.2f}",
+            f"  Jealousy: {dna.get('jealousy_tendency', 0.5):.2f}",
+            f"  Loyalty: {dna.get('loyalty', 0.5):.2f}",
+            f"  Patience: {dna.get('patience', 0.5):.2f}",
+            f"  Playfulness: {dna.get('playfulness', 0.5):.2f}",
+            "", f"💬 Lore: {char.get('lore', '(none)')[:200]}",
+        ]
+        await _send(chat_id, "\n".join(lines))
+
+    async def handle_set(uid: int, chat_id: int, cmd: str, val: str) -> None:
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        if cmd == "mood":
+            if val not in config.MOOD_STATES:
+                await _send(chat_id, f"❌ Invalid mood. Choose: {', '.join(config.MOOD_STATES)}")
+                return
+            psych = await database.get_psychological_state(user_id, char_id)
+            psych["short_term_mood"] = val
+            await database.upsert_psychological_state(user_id, psych, char_id)
+            await _send(chat_id, f"✅ Mood changed to **{val}**")
+        elif cmd == "stage":
+            if val not in config.RELATIONSHIP_STAGES:
+                await _send(chat_id, f"❌ Invalid stage. Choose: {', '.join(config.RELATIONSHIP_STAGES)}")
+                return
+            psych = await database.get_psychological_state(user_id, char_id)
+            psych["relationship_stage"] = val
+            await database.upsert_psychological_state(user_id, psych, char_id)
+            await _send(chat_id, f"✅ Stage changed to **{val}**")
+        elif cmd == "name":
+            await database.update_character_profile(char_id, {"name": val})
+            await _send(chat_id, f"✅ Name changed to **{val}**")
+        elif cmd == "country":
+            await database.update_character_profile(char_id, {"country": val})
+            await _send(chat_id, f"✅ Country changed to **{val}**")
+        elif cmd == "city":
+            await database.update_character_profile(char_id, {"city": val})
+            await _send(chat_id, f"✅ City changed to **{val}**")
+
+    async def handle_lore(uid: int, chat_id: int, text: str = "") -> None:
+        char_id = await _get_or_create_char(uid)
+        char = await database.get_character_profile(char_id)
+        if not text:
+            await _send(chat_id, f"📖 Current lore:\n\n{char.get('lore', '(none)')}")
+        else:
+            await database.update_character_profile(char_id, {"lore": text})
+            await _send(chat_id, f"✅ Lore saved! ({len(text)} chars)")
+
+    # ---- Dispatch ----
+    async def _dispatch(uid: int, chat_id: int, text: str) -> None:
+        if text == "/start":
+            asyncio.ensure_future(handle_start(uid, chat_id))
+        elif text == "/info":
+            asyncio.ensure_future(handle_info(uid, chat_id))
+        elif text == "/lore":
+            asyncio.ensure_future(handle_lore(uid, chat_id))
+        elif text.startswith("/lore_set "):
+            asyncio.ensure_future(handle_lore(uid, chat_id, text[10:]))
+        elif text.startswith("/mood "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "mood", text[6:]))
+        elif text.startswith("/stage "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "stage", text[7:]))
+        elif text.startswith("/name "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "name", text[6:]))
+        elif text.startswith("/country "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "country", text[9:]))
+        elif text.startswith("/city "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "city", text[6:]))
+        else:
+            asyncio.ensure_future(handle_text(uid, chat_id, text))
+
+    # ---- Polling / Webhook loop ----
+    if strategy == "webhook":
+        logger.info("Telegram in webhook mode — listening at /webhook/telegram")
+        global _telegram_update_queue
+        _telegram_update_queue = asyncio.Queue()
+        _telegram_app = (_telegram_update_queue,)
+
+        async def _webhook_poller():
+            while True:
+                try:
+                    uid, chat_id, text = await asyncio.wait_for(_telegram_update_queue.get(), timeout=5)
+                    await _dispatch(uid, chat_id, text)
+                except asyncio.TimeoutError:
+                    continue
+                except Exception as e:
+                    logger.warning(f"Webhook dispatch error: {e}")
+
+        _bot_tasks.append(asyncio.create_task(_webhook_poller()))
+        return
+
+    logger.info(f"Telegram polling started ({strategy})")
+    while True:
+        try:
+            if aio_bot:
+                for u in await aio_bot.get_updates(timeout=30):
+                    msg = u.get("message") or {}
+                    if not msg.get("text"):
                         continue
-                    uid = update.effective_user.id
-                    chat_id = update.effective_chat.id
-                    text = update.message.text
-
-                    if text == "/start":
-                        asyncio.ensure_future(handle_start(uid, chat_id))
-                    elif text == "/info":
-                        asyncio.ensure_future(handle_info(uid, chat_id))
-                    elif text == "/lore":
-                        asyncio.ensure_future(handle_lore(uid, chat_id))
-                    elif text.startswith("/lore_set "):
-                        asyncio.ensure_future(handle_lore(uid, chat_id, text[10:]))
-                    elif text.startswith("/mood "):
-                        asyncio.ensure_future(handle_set(uid, chat_id, "mood", text[6:]))
-                    elif text.startswith("/stage "):
-                        asyncio.ensure_future(handle_set(uid, chat_id, "stage", text[7:]))
-                    elif text.startswith("/name "):
-                        asyncio.ensure_future(handle_set(uid, chat_id, "name", text[6:]))
-                    elif text.startswith("/country "):
-                        asyncio.ensure_future(handle_set(uid, chat_id, "country", text[9:]))
-                    elif text.startswith("/city "):
-                        asyncio.ensure_future(handle_set(uid, chat_id, "city", text[6:]))
-                    else:
-                        asyncio.ensure_future(handle_text(uid, chat_id, text))
-            except Exception as e:
-                logger.warning(f"Telegram poll iteration error: {e}")
-            await asyncio.sleep(0.3)
-
-    except Exception as e:
-        logger.warning(f"Telegram bot failed to start: {e}")
+                    await _dispatch(msg["from"]["id"], msg["chat"]["id"], msg["text"])
+            elif ptb_bot:
+                off = getattr(ptb_bot, '_poll_offset', None)
+                for u in await ptb_bot.get_updates(offset=off, timeout=30, allowed_updates=["messages"]):
+                    ptb_bot._poll_offset = u.update_id + 1
+                    if not u.message or not u.message.text:
+                        continue
+                    await _dispatch(u.effective_user.id, u.effective_chat.id, u.message.text)
+        except Exception as e:
+            logger.warning(f"Telegram poll error: {e}")
+        await asyncio.sleep(0.3)
 
 
 async def _run_discord_bot() -> None:
@@ -896,6 +1046,27 @@ async def shutdown() -> None:
 
 async def main() -> None:
     ui = create_ui()
+
+    # Register Telegram webhook endpoint on Gradio's FastAPI app
+    try:
+        from fastapi import Request
+
+        @ui.app.post("/webhook/telegram")
+        async def telegram_webhook(request: Request):
+            global _telegram_update_queue
+            data = await request.json()
+            msg = data.get("message") or {}
+            if msg.get("text") and _telegram_update_queue:
+                await _telegram_update_queue.put((
+                    msg["from"]["id"],
+                    msg["chat"]["id"],
+                    msg["text"],
+                ))
+            return {"ok": True}
+        logger.debug("Telegram webhook endpoint registered at /webhook/telegram")
+    except Exception as e:
+        logger.debug(f"Could not register Telegram webhook endpoint: {e}")
+
     await startup()
     ui.launch(
         server_name="0.0.0.0",
