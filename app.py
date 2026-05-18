@@ -542,6 +542,9 @@ Discord: {"✅" if config.DISCORD_BOT_TOKEN else "❌"}""",
 async def _run_telegram_bot() -> None:
     global _telegram_app
     try:
+        if not config.TELEGRAM_BOT_TOKEN:
+            logger.info("TELEGRAM_BOT_TOKEN not set, skipping Telegram bot")
+            return
         from telegram import Bot, Update
         from telegram.request import HTTPXRequest
         req = HTTPXRequest(connect_timeout=30, read_timeout=30, pool_timeout=30)
@@ -556,7 +559,7 @@ async def _run_telegram_bot() -> None:
             except Exception as e:
                 if attempt < 2:
                     logger.warning(f"Telegram connect attempt {attempt+1} failed: {e}, retrying...")
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(5)
                 else:
                     raise
 
