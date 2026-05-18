@@ -23,6 +23,8 @@ class TyphoonClient:
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
+        if not self.api_key:
+            raise ValueError("TYPHOON_API_KEY not set — cannot authenticate")
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 base_url=self.api_base,
