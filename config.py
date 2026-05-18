@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List, Tuple
 
 TYPHOON_API_KEY: str = os.getenv("TYPHOON_API_KEY", "")
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_API_PROXY: str = os.getenv("TELEGRAM_API_PROXY", "")
 DISCORD_BOT_TOKEN: str = os.getenv("DISCORD_BOT_TOKEN", "")
 
 TYPHOON_API_BASE: str = "https://api.opentyphoon.ai/v1"

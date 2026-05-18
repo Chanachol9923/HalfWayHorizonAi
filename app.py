@@ -521,8 +521,9 @@ Event Chance: {config.EVENT_INJECTION_CHANCE * 100}%
 Backup: {config.BACKUP_INTERVAL_HOURS}h
 Daily Affinity Cap: {config.DAILY_AFFINITY_CAP}
 Telegram: {"✅" if config.TELEGRAM_BOT_TOKEN else "❌"}
+Telegram Proxy: {"✅" if config.TELEGRAM_API_PROXY else "❌ (direct)"}
 Discord: {"✅" if config.DISCORD_BOT_TOKEN else "❌"}""",
-                lines=13,
+                lines=14,
             )
 
             async def create_backup_action():
@@ -548,7 +549,10 @@ async def _run_telegram_bot() -> None:
         from telegram import Bot, Update
         from telegram.request import HTTPXRequest
         req = HTTPXRequest(connect_timeout=15, read_timeout=15, pool_timeout=15)
-        bot = Bot(token=config.TELEGRAM_BOT_TOKEN, request=req)
+        bot_kwargs = dict(token=config.TELEGRAM_BOT_TOKEN, request=req)
+        if config.TELEGRAM_API_PROXY:
+            bot_kwargs["base_url"] = config.TELEGRAM_API_PROXY
+        bot = Bot(**bot_kwargs)
         _telegram_app = bot
 
         for attempt in range(2):
