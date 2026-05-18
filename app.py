@@ -543,11 +543,22 @@ async def _run_telegram_bot() -> None:
     global _telegram_app
     try:
         from telegram import Bot, Update
-        bot = Bot(token=config.TELEGRAM_BOT_TOKEN)
+        from telegram.request import HTTPXRequest
+        req = HTTPXRequest(connect_timeout=30, read_timeout=30, pool_timeout=30)
+        bot = Bot(token=config.TELEGRAM_BOT_TOKEN, request=req)
         _telegram_app = bot
 
-        bot_info = await bot.get_me()
-        logger.info(f"Telegram bot connected: @{bot_info.username}")
+        for attempt in range(3):
+            try:
+                bot_info = await bot.get_me()
+                logger.info(f"Telegram bot connected: @{bot_info.username}")
+                break
+            except Exception as e:
+                if attempt < 2:
+                    logger.warning(f"Telegram connect attempt {attempt+1} failed: {e}, retrying...")
+                    await asyncio.sleep(3)
+                else:
+                    raise
 
         _msg_tracker: Dict[int, tuple] = {}
 
