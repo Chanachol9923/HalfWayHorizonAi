@@ -547,21 +547,22 @@ async def _run_telegram_bot() -> None:
             return
         from telegram import Bot, Update
         from telegram.request import HTTPXRequest
-        req = HTTPXRequest(connect_timeout=30, read_timeout=30, pool_timeout=30)
+        req = HTTPXRequest(connect_timeout=15, read_timeout=15, pool_timeout=15)
         bot = Bot(token=config.TELEGRAM_BOT_TOKEN, request=req)
         _telegram_app = bot
 
-        for attempt in range(3):
+        for attempt in range(2):
             try:
                 bot_info = await bot.get_me()
                 logger.info(f"Telegram bot connected: @{bot_info.username}")
                 break
             except Exception as e:
-                if attempt < 2:
-                    logger.warning(f"Telegram connect attempt {attempt+1} failed: {e}, retrying...")
-                    await asyncio.sleep(5)
+                if attempt == 0:
+                    logger.warning(f"Telegram connect attempt 1 failed: {e}, retrying...")
+                    await asyncio.sleep(3)
                 else:
-                    raise
+                    logger.warning(f"Telegram not available on this network (2 attempts failed: {e})")
+                    return
 
         _msg_tracker: Dict[int, tuple] = {}
 
@@ -893,7 +894,7 @@ async def main() -> None:
     ui = create_ui()
     await startup()
     ui.launch(
-        server_name="127.0.0.1",
+        server_name="0.0.0.0",
         server_port=config.GRADIO_PORT,
         share=config.GRADIO_SHARE or os.name == "nt",
         prevent_thread_lock=True,
