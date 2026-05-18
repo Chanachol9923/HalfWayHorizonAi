@@ -1,0 +1,671 @@
+2026-05-18 21:02:03 | INFO     | __main__ | ============================================================
+2026-05-18 21:02:03 | INFO     | __main__ | HalfWay Horizon AI Engine starting...
+2026-05-18 21:02:03 | INFO     | __main__ | ============================================================
+2026-05-18 21:02:03 | INFO     | database | Database schema initialized successfully
+2026-05-18 21:02:03 | INFO     | worker | All background workers started
+2026-05-18 21:02:03 | INFO     | __main__ | All systems online — ready for connections
+2026-05-18 21:02:03 | INFO     | worker | Lifestyle simulator started
+2026-05-18 21:02:03 | INFO     | worker | Memory consolidation cron started (runs at 3:00 daily)
+2026-05-18 21:02:03 | INFO     | worker | Keep-alive pinger started (port 7860, interval 900s)
+2026-05-18 21:02:03 | INFO     | worker | Ghosting detector started
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\route_utils.py", line 761, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 431, in main
+    gradio_api_info = api_info(False)
+                      ^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 460, in api_info
+    app.api_info = app.get_blocks().get_api_info()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2785, in get_api_info
+    python_type = client_utils.json_schema_to_python_type(info)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 893, in json_schema_to_python_type
+    type_ = _json_schema_to_python_type(schema, schema.get("$defs"))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in _json_schema_to_python_type
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in <listcomp>
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in _json_schema_to_python_type
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in <listcomp>
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 955, in _json_schema_to_python_type
+    f"str, {_json_schema_to_python_type(schema['additionalProperties'], defs)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 901, in _json_schema_to_python_type
+    type_ = get_type(schema)
+            ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 863, in get_type
+    if "const" in schema:
+       ^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'bool' is not iterable
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\route_utils.py", line 761, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 431, in main
+    gradio_api_info = api_info(False)
+                      ^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 460, in api_info
+    app.api_info = app.get_blocks().get_api_info()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2785, in get_api_info
+    python_type = client_utils.json_schema_to_python_type(info)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 893, in json_schema_to_python_type
+    type_ = _json_schema_to_python_type(schema, schema.get("$defs"))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in _json_schema_to_python_type
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in <listcomp>
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in _json_schema_to_python_type
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in <listcomp>
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 955, in _json_schema_to_python_type
+    f"str, {_json_schema_to_python_type(schema['additionalProperties'], defs)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 901, in _json_schema_to_python_type
+    type_ = get_type(schema)
+            ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 863, in get_type
+    if "const" in schema:
+       ^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'bool' is not iterable
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\route_utils.py", line 761, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 431, in main
+    gradio_api_info = api_info(False)
+                      ^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 460, in api_info
+    app.api_info = app.get_blocks().get_api_info()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2785, in get_api_info
+    python_type = client_utils.json_schema_to_python_type(info)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 893, in json_schema_to_python_type
+    type_ = _json_schema_to_python_type(schema, schema.get("$defs"))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in _json_schema_to_python_type
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in <listcomp>
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in _json_schema_to_python_type
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in <listcomp>
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 955, in _json_schema_to_python_type
+    f"str, {_json_schema_to_python_type(schema['additionalProperties'], defs)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 901, in _json_schema_to_python_type
+    type_ = get_type(schema)
+            ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 863, in get_type
+    if "const" in schema:
+       ^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'bool' is not iterable
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\route_utils.py", line 761, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 431, in main
+    gradio_api_info = api_info(False)
+                      ^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 460, in api_info
+    app.api_info = app.get_blocks().get_api_info()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2785, in get_api_info
+    python_type = client_utils.json_schema_to_python_type(info)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 893, in json_schema_to_python_type
+    type_ = _json_schema_to_python_type(schema, schema.get("$defs"))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in _json_schema_to_python_type
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in <listcomp>
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in _json_schema_to_python_type
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in <listcomp>
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 955, in _json_schema_to_python_type
+    f"str, {_json_schema_to_python_type(schema['additionalProperties'], defs)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 901, in _json_schema_to_python_type
+    type_ = get_type(schema)
+            ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 863, in get_type
+    if "const" in schema:
+       ^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'bool' is not iterable
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\route_utils.py", line 761, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 431, in main
+    gradio_api_info = api_info(False)
+                      ^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 460, in api_info
+    app.api_info = app.get_blocks().get_api_info()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2785, in get_api_info
+    python_type = client_utils.json_schema_to_python_type(info)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 893, in json_schema_to_python_type
+    type_ = _json_schema_to_python_type(schema, schema.get("$defs"))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in _json_schema_to_python_type
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in <listcomp>
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in _json_schema_to_python_type
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in <listcomp>
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 955, in _json_schema_to_python_type
+    f"str, {_json_schema_to_python_type(schema['additionalProperties'], defs)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 901, in _json_schema_to_python_type
+    type_ = get_type(schema)
+            ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 863, in get_type
+    if "const" in schema:
+       ^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'bool' is not iterable
+2026-05-18 21:02:07 | INFO     | worker | Next memory consolidation at 2026-05-19T03:00:00+07:00 (6.0h)
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 56, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\route_utils.py", line 761, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 431, in main
+    gradio_api_info = api_info(False)
+                      ^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\routes.py", line 460, in api_info
+    app.api_info = app.get_blocks().get_api_info()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2785, in get_api_info
+    python_type = client_utils.json_schema_to_python_type(info)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 893, in json_schema_to_python_type
+    type_ = _json_schema_to_python_type(schema, schema.get("$defs"))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in _json_schema_to_python_type
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 929, in <listcomp>
+    [_json_schema_to_python_type(i, defs) for i in items["prefixItems"]]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in _json_schema_to_python_type
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 960, in <listcomp>
+    desc = " | ".join([_json_schema_to_python_type(i, defs) for i in schema[type_]])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 908, in _json_schema_to_python_type
+    return _json_schema_to_python_type(defs[schema["$ref"].split("/")[-1]], defs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 947, in _json_schema_to_python_type
+    des = [
+          ^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 948, in <listcomp>
+    f"{n}: {_json_schema_to_python_type(v, defs)}{get_desc(v)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 955, in _json_schema_to_python_type
+    f"str, {_json_schema_to_python_type(schema['additionalProperties'], defs)}"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 901, in _json_schema_to_python_type
+    type_ = get_type(schema)
+            ^^^^^^^^^^^^^^^^
+  File "C:\Users\Q\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio_client\utils.py", line 863, in get_type
+    if "const" in schema:
+       ^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'bool' is not iterable
