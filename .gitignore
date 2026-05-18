@@ -5,3 +5,6 @@ backups/
 *.db
 .env
 *.log
+
+stderr.txt
+stdout.txt
