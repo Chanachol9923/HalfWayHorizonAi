@@ -572,14 +572,18 @@ class _AiohttpTelegramClient:
                     self_._telegram_ip = _ip
                     super().__init__(**kw)
 
-                async def _resolve_host(self_, host, port, family=0):
+                async def _resolve_host(self_, host, port, **kw):
                     return [{
                         "hostname": "api.telegram.org",
                         "host": self_._telegram_ip,
                         "port": port, "family": socket.AF_INET, "proto": 0, "flags": 0,
                     }]
 
-            self._session = aiohttp.ClientSession(connector=_ResolvedConnector(self.ip, ssl=ssl_ctx))
+            tout = aiohttp.ClientTimeout(total=30)
+            self._session = aiohttp.ClientSession(
+                connector=_ResolvedConnector(self.ip, ssl=ssl_ctx),
+                timeout=tout,
+            )
         return self._session
 
     async def _api(self, method: str, **kwargs) -> dict:
@@ -616,27 +620,39 @@ class _AiohttpTelegramClient:
             await self._session.close()
 
 
-async def _try_ptb(proxy_url: Optional[str] = None):
+async def _try_ptb(proxy_url: Optional[str] = None, retries: int = 3):
     """Try connecting via python-telegram-bot (proxy or direct)."""
-    try:
-        from telegram import Bot
-        from telegram.request import HTTPXRequest
-        bot = Bot(
-            token=config.TELEGRAM_BOT_TOKEN,
-            request=HTTPXRequest(connect_timeout=15, read_timeout=15),
-            **(dict(base_url=proxy_url) if proxy_url else {}),
-        )
-        info = await bot.get_me()
-        logger.info(f"Telegram PTB {'proxy' if proxy_url else 'direct'}: @{info.username}")
-        return bot, None
-    except Exception as e:
-        logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} failed: {e}")
-        return None, None
+    import socket as _socket
+    for attempt in range(retries):
+        try:
+            from telegram import Bot
+            from telegram.request import HTTPXRequest
+            bot = Bot(
+                token=config.TELEGRAM_BOT_TOKEN,
+                request=HTTPXRequest(connect_timeout=30, read_timeout=30),
+                **(dict(base_url=proxy_url) if proxy_url else {}),
+            )
+            info = await bot.get_me()
+            logger.info(f"Telegram PTB {'proxy' if proxy_url else 'direct'}: @{info.username}")
+            return bot, None
+        except (_socket.gaierror, OSError) as e:
+            logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} DNS error — skipping: {e}")
+            return None, None
+        except Exception as e:
+            err = str(e)
+            if "Name or service not known" in err:
+                logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} DNS error — skipping: {e}")
+                return None, None
+            logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} (attempt {attempt+1}): {e}")
+            if attempt < retries - 1:
+                await asyncio.sleep(5 * (attempt + 1))
+    return None, None
 
 
 async def _try_aiohttp():
     """Try aiohttp with hardcoded IPs (bypasses system DNS entirely)."""
     for ip in _TELEGRAM_API_IPS:
+        client = None
         try:
             client = _AiohttpTelegramClient(config.TELEGRAM_BOT_TOKEN, ip)
             username = await client.get_me()
@@ -644,6 +660,8 @@ async def _try_aiohttp():
             return None, client
         except Exception as e:
             logger.warning(f"aiohttp IP {ip} failed: {e}")
+            if client:
+                await client.close()
     return None, None
 
 
