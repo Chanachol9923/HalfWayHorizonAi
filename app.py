@@ -1,13 +1,11 @@
 import asyncio
 import json
 import os
-import socket
 import sys
 import time
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 
-import aiohttp
 import gradio as gr
 import pytz
 from loguru import logger
@@ -30,7 +28,6 @@ _supervisor: Optional[WorkerSupervisor] = None
 _current_user_id: str = "default"
 _current_character_id: str = "default"
 _telegram_app: Optional[Any] = None
-_telegram_update_queue: Optional[asyncio.Queue] = None
 _bot_tasks: List[asyncio.Task] = []
 
 
@@ -543,148 +540,24 @@ Discord: {"✅" if config.DISCORD_BOT_TOKEN else "❌"}""",
     return ui
 
 
-# --- Telegram multi-strategy connection ---
+# --- Telegram connection ---
 
-_TELEGRAM_API_IPS = [
-    "149.154.167.220",
-    "149.154.167.221",
-    "149.154.167.222",
-    "149.154.167.251",
-]
-
-
-class _AiohttpTelegramClient:
-    """Raw Telegram Bot API client using aiohttp with custom DNS (bypasses system DNS)."""
-
-    def __init__(self, token: str, ip: str):
-        self.token = token
-        self.ip = ip
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._offset: Optional[int] = None
-
-    async def _session_get(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            import ssl
-            ssl_ctx = ssl.create_default_context()
-
-            class _ResolvedConnector(aiohttp.TCPConnector):
-                def __init__(self_, _ip, **kw):
-                    self_._telegram_ip = _ip
-                    super().__init__(**kw)
-
-                async def _resolve_host(self_, host, port, **kw):
-                    return [{
-                        "hostname": "api.telegram.org",
-                        "host": self_._telegram_ip,
-                        "port": port, "family": socket.AF_INET, "proto": 0, "flags": 0,
-                    }]
-
-            tout = aiohttp.ClientTimeout(total=30)
-            self._session = aiohttp.ClientSession(
-                connector=_ResolvedConnector(self.ip, ssl=ssl_ctx),
-                timeout=tout,
-            )
-        return self._session
-
-    async def _api(self, method: str, **kwargs) -> dict:
-        sess = await self._session_get()
-        url = f"https://api.telegram.org/bot{self.token}/{method}"
-        kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        async with sess.post(url, json=kwargs) as resp:
-            return await resp.json()
-
-    async def get_me(self) -> str:
-        data = await self._api("getMe")
-        if data.get("ok"):
-            return data["result"]["username"]
-        raise ConnectionError(data.get("description", "getMe failed"))
-
-    async def send_message(self, chat_id: int, text: str, **kw) -> None:
-        await self._api("sendMessage", chat_id=chat_id, text=text, **kw)
-
-    async def send_chat_action(self, chat_id: int, action: str = "typing") -> None:
-        await self._api("sendChatAction", chat_id=chat_id, action=action)
-
-    async def get_updates(self, timeout: int = 30) -> list:
-        data = await self._api("getUpdates", offset=self._offset, timeout=timeout, allowed_updates=["message"])
-        if data.get("ok"):
-            updates = data["result"]
-            if updates:
-                self._offset = updates[-1]["update_id"] + 1
-            return updates
-        logger.warning(f"getUpdates error: {data.get('description', 'unknown')}")
-        return []
-
-    async def close(self) -> None:
-        if self._session and not self._session.closed:
-            await self._session.close()
-
-
-async def _try_ptb(proxy_url: Optional[str] = None, retries: int = 3):
-    """Try connecting via python-telegram-bot (proxy or direct)."""
-    import socket as _socket
-    for attempt in range(retries):
-        try:
-            from telegram import Bot
-            from telegram.request import HTTPXRequest
-            bot = Bot(
-                token=config.TELEGRAM_BOT_TOKEN,
-                request=HTTPXRequest(connect_timeout=30, read_timeout=30),
-                **(dict(base_url=proxy_url) if proxy_url else {}),
-            )
-            info = await bot.get_me()
-            logger.info(f"Telegram PTB {'proxy' if proxy_url else 'direct'}: @{info.username}")
-            return bot, None
-        except (_socket.gaierror, OSError) as e:
-            logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} DNS error — skipping: {e}")
-            return None, None
-        except Exception as e:
-            err = str(e)
-            if "Name or service not known" in err:
-                logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} DNS error — skipping: {e}")
-                return None, None
-            logger.warning(f"PTB {'proxy' if proxy_url else 'direct'} (attempt {attempt+1}): {e}")
-            if attempt < retries - 1:
-                await asyncio.sleep(5 * (attempt + 1))
-    return None, None
-
-
-async def _try_aiohttp():
-    """Try aiohttp with hardcoded IPs (bypasses system DNS entirely)."""
-    for ip in _TELEGRAM_API_IPS:
-        client = None
-        try:
-            client = _AiohttpTelegramClient(config.TELEGRAM_BOT_TOKEN, ip)
-            username = await client.get_me()
-            logger.info(f"Telegram aiohttp IP {ip}: @{username}")
-            return None, client
-        except Exception as e:
-            logger.warning(f"aiohttp IP {ip} failed: {e}")
-            if client:
-                await client.close()
-    return None, None
-
-
-async def _try_webhook_register() -> bool:
-    """Register Telegram webhook on the HF Space URL (last resort)."""
+async def _connect_ptb(proxy_url: Optional[str] = None):
+    """Connect to Telegram via PTB Bot (proxy or direct)."""
     try:
-        space_url = (os.getenv("SPACE_URL") or os.getenv("HF_ENDPOINT") or "")
-        if not space_url:
-            return False
-        webhook_url = f"{space_url.rstrip('/')}/webhook/telegram"
-        import httpx
-        async with httpx.AsyncClient(timeout=15) as cl:
-            r = await cl.post(
-                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/setWebhook",
-                json={"url": webhook_url, "allowed_updates": ["message"]},
-            )
-            ok = r.json().get("ok")
-            if ok:
-                logger.info(f"Telegram webhook registered: {webhook_url}")
-            return bool(ok)
+        from telegram import Bot
+        from telegram.request import HTTPXRequest
+        bot = Bot(
+            token=config.TELEGRAM_BOT_TOKEN,
+            request=HTTPXRequest(connect_timeout=30, read_timeout=30),
+            **(dict(base_url=proxy_url) if proxy_url else {}),
+        )
+        info = await bot.get_me()
+        logger.info(f"Telegram connected ({'proxy' if proxy_url else 'direct'}): @{info.username}")
+        return bot
     except Exception as e:
-        logger.warning(f"Webhook register failed: {e}")
-        return False
+        logger.warning(f"Telegram {'proxy' if proxy_url else 'direct'} failed: {e}")
+        return None
 
 
 async def _run_telegram_bot() -> None:
@@ -693,6 +566,14 @@ async def _run_telegram_bot() -> None:
         logger.info("TELEGRAM_BOT_TOKEN not set, skipping Telegram bot")
         return
 
+    ptb_bot = await _connect_ptb(config.TELEGRAM_API_PROXY) if config.TELEGRAM_API_PROXY else None
+    if not ptb_bot:
+        ptb_bot = await _connect_ptb()
+    if not ptb_bot:
+        logger.warning("Telegram connection failed — skipping")
+        return
+
+    _telegram_app = ptb_bot
     _msg_tracker: Dict[int, tuple] = {}
 
     async def _rapid(uid: int) -> Optional[float]:
@@ -708,50 +589,11 @@ async def _run_telegram_bot() -> None:
         _msg_tracker[uid] = (now, c)
         return -1 if c >= config.RAPID_FIRE_MAX_BEFORE_SKIP else c * 3.0
 
-    # ---- Connection strategies ----
-    ptb_bot = None
-    aio_bot: Optional[_AiohttpTelegramClient] = None
-    strategy = ""
-
-    if config.TELEGRAM_API_PROXY:
-        ptb_bot, _ = await _try_ptb(config.TELEGRAM_API_PROXY)
-        if ptb_bot:
-            strategy = "proxy"
-
-    if not ptb_bot and not aio_bot:
-        ptb_bot, _ = await _try_ptb()
-        if ptb_bot:
-            strategy = "direct"
-
-    if not ptb_bot and not aio_bot:
-        _, aio_bot = await _try_aiohttp()
-        if aio_bot:
-            strategy = "aiohttp-ip"
-
-    if not ptb_bot and not aio_bot:
-        webhook_ok = await _try_webhook_register()
-        if webhook_ok:
-            strategy = "webhook"
-
-    if not ptb_bot and not aio_bot and not webhook_ok:
-        logger.warning("All Telegram strategies failed — skipping")
-        return
-
-    logger.info(f"Telegram strategy: {strategy}")
-    _telegram_app = ptb_bot or aio_bot or "webhook"
-
-    # ---- Helpers ----
     async def _send(chat_id: int, text: str) -> None:
-        if aio_bot:
-            await aio_bot.send_message(chat_id=chat_id, text=text)
-        elif ptb_bot:
-            await ptb_bot.send_message(chat_id=chat_id, text=text)
+        await ptb_bot.send_message(chat_id=chat_id, text=text)
 
     async def _action(chat_id: int) -> None:
-        if aio_bot:
-            await aio_bot.send_chat_action(chat_id=chat_id)
-        elif ptb_bot:
-            await ptb_bot.send_chat_action(chat_id=chat_id, action="typing")
+        await ptb_bot.send_chat_action(chat_id=chat_id, action="typing")
 
     # ---- Proactive callback ----
     async def _telegram_send(char_id: str, msg: str) -> None:
@@ -914,7 +756,6 @@ async def _run_telegram_bot() -> None:
             await database.update_character_profile(char_id, {"lore": text})
             await _send(chat_id, f"✅ Lore saved! ({len(text)} chars)")
 
-    # ---- Dispatch ----
     async def _dispatch(uid: int, chat_id: int, text: str) -> None:
         if text == "/start":
             asyncio.ensure_future(handle_start(uid, chat_id))
@@ -937,42 +778,16 @@ async def _run_telegram_bot() -> None:
         else:
             asyncio.ensure_future(handle_text(uid, chat_id, text))
 
-    # ---- Polling / Webhook loop ----
-    if strategy == "webhook":
-        logger.info("Telegram in webhook mode — listening at /webhook/telegram")
-        global _telegram_update_queue
-        _telegram_update_queue = asyncio.Queue()
-        _telegram_app = (_telegram_update_queue,)
-
-        async def _webhook_poller():
-            while True:
-                try:
-                    uid, chat_id, text = await asyncio.wait_for(_telegram_update_queue.get(), timeout=5)
-                    await _dispatch(uid, chat_id, text)
-                except asyncio.TimeoutError:
-                    continue
-                except Exception as e:
-                    logger.warning(f"Webhook dispatch error: {e}")
-
-        _bot_tasks.append(asyncio.create_task(_webhook_poller()))
-        return
-
-    logger.info(f"Telegram polling started ({strategy})")
+    # ---- Polling loop ----
+    logger.info("Telegram polling started")
     while True:
         try:
-            if aio_bot:
-                for u in await aio_bot.get_updates(timeout=30):
-                    msg = u.get("message") or {}
-                    if not msg.get("text"):
-                        continue
-                    await _dispatch(msg["from"]["id"], msg["chat"]["id"], msg["text"])
-            elif ptb_bot:
-                off = getattr(ptb_bot, '_poll_offset', None)
-                for u in await ptb_bot.get_updates(offset=off, timeout=30, allowed_updates=["messages"]):
-                    ptb_bot._poll_offset = u.update_id + 1
-                    if not u.message or not u.message.text:
-                        continue
-                    await _dispatch(u.effective_user.id, u.effective_chat.id, u.message.text)
+            off = getattr(ptb_bot, '_poll_offset', None)
+            for u in await ptb_bot.get_updates(offset=off, timeout=30, allowed_updates=["messages"]):
+                ptb_bot._poll_offset = u.update_id + 1
+                if not u.message or not u.message.text:
+                    continue
+                await _dispatch(u.effective_user.id, u.effective_chat.id, u.message.text)
         except Exception as e:
             logger.warning(f"Telegram poll error: {e}")
         await asyncio.sleep(0.3)
@@ -1027,8 +842,6 @@ async def startup() -> None:
     logger.info("=" * 60)
     logger.info("HalfWay Horizon AI Engine starting...")
     logger.info("=" * 60)
-    store = database.get_hf_store()
-    await store.download_db_state()
     await database.initialize_database()
     profiles = await database.get_character_profiles()
     if not profiles:
@@ -1052,8 +865,6 @@ async def shutdown() -> None:
     if _supervisor:
         await _supervisor.stop_all()
     await close_orchestrator()
-    store = database.get_hf_store()
-    await store.upload_db_state()
     await database.close()
     for task in _bot_tasks:
         task.cancel()
@@ -1063,35 +874,17 @@ async def shutdown() -> None:
 
 
 async def main() -> None:
-    ui = create_ui()
-
-    # Register Telegram webhook endpoint on Gradio's FastAPI app
-    try:
-        from fastapi import Request
-
-        @ui.app.post("/webhook/telegram")
-        async def telegram_webhook(request: Request):
-            global _telegram_update_queue
-            data = await request.json()
-            msg = data.get("message") or {}
-            if msg.get("text") and _telegram_update_queue:
-                await _telegram_update_queue.put((
-                    msg["from"]["id"],
-                    msg["chat"]["id"],
-                    msg["text"],
-                ))
-            return {"ok": True}
-        logger.debug("Telegram webhook endpoint registered at /webhook/telegram")
-    except Exception as e:
-        logger.debug(f"Could not register Telegram webhook endpoint: {e}")
-
     await startup()
-    ui.launch(
-        server_name="0.0.0.0",
-        server_port=config.GRADIO_PORT,
-        share=config.GRADIO_SHARE or os.name == "nt",
-        prevent_thread_lock=True,
-    )
+
+    if not config.HEADLESS_MODE:
+        ui = create_ui()
+        ui.launch(
+            server_name="0.0.0.0",
+            server_port=config.GRADIO_PORT,
+            share=config.GRADIO_SHARE or os.name == "nt",
+            prevent_thread_lock=True,
+        )
+
     try:
         while True:
             await asyncio.sleep(3600)

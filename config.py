@@ -7,6 +7,10 @@ TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_API_PROXY: str = os.getenv("TELEGRAM_API_PROXY", "")
 DISCORD_BOT_TOKEN: str = os.getenv("DISCORD_BOT_TOKEN", "")
 
+HEADLESS_MODE: bool = os.getenv("HEADLESS_MODE", "true").lower() == "true"
+GRADIO_PORT: int = int(os.getenv("GRADIO_PORT", "7860"))
+GRADIO_SHARE: bool = os.getenv("GRADIO_SHARE", "false").lower() == "true"
+
 TYPHOON_API_BASE: str = "https://api.opentyphoon.ai/v1"
 TYPHOON_MODEL_WORLD: str = os.getenv("TYPHOON_MODEL", "typhoon-v2.5-30b-a3b-instruct")
 TYPHOON_MODEL_CHAT: str = os.getenv("TYPHOON_MODEL", "typhoon-v2.5-30b-a3b-instruct")
@@ -161,13 +165,7 @@ EVENT_TYPES: List[str] = [
 
 TEXT_SPLIT_PATTERN: str = r'(?<=[.!?])\s+|(?<=[,;:])\s+|(?<=ก็)\s+|(?<=นะ)\s+|(?<=คะ)\s+|(?<=ครับ)\s+|(?<=จ้ะ)\s+'
 
-GRADIO_PORT: int = int(os.getenv("GRADIO_PORT", "7860"))
-GRADIO_SHARE: bool = os.getenv("GRADIO_SHARE", "false").lower() == "true"
 GRADIO_THEME: str = "soft"
-
-TELEGRAM_WEBHOOK_PATH: str = "/webhook/telegram"
-DISCORD_WEBHOOK_PATH: str = "/webhook/discord"
-WEBHOOK_BASE_URL: Optional[str] = os.getenv("WEBHOOK_BASE_URL", None)
 
 ITINERARY_PHASES: List[str] = ["preparing", "going_there", "main_activity", "returning"]
 
