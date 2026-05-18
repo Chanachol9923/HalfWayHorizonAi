@@ -1,5 +1,6 @@
 gradio>=4.27,<4.32.0
 starlette<1.0.0
+huggingface-hub>=0.20,<0.26
 aiosqlite>=0.19,<1.0
 httpx>=0.25,<1.0
 python-telegram-bot>=20.0,<21.0
