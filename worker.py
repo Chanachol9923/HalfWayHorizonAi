@@ -45,61 +45,6 @@ class TextSplitter:
             buckets = [text]
         return buckets
 
-    @staticmethod
-    def should_double_text(buckets: List[str], personality: Dict[str, Any]) -> bool:
-        if len(buckets) <= 1:
-            return False
-        needy = personality.get("sliders", {}).get("needy_multiplier", 1.0)
-        anxiety = personality.get("base_traits", {}).get("anxiety_and_insecurity", 0.2)
-        patience = personality.get("base_traits", {}).get("patience", 0.6)
-        impulsive_roll = random.random()
-        base_chance = 0.3 * needy * (1 + anxiety) * (1 - patience * 0.5)
-        return impulsive_roll < base_chance
-
-
-class TypingSimulator:
-    def __init__(self) -> None:
-        self._typing_callbacks: List[Callable[[], Awaitable[None]]] = []
-
-    def register_typing_callback(self, cb: Callable[[], Awaitable[None]]) -> None:
-        self._typing_callbacks.append(cb)
-
-    async def simulate_typing(self, text: str, speed_modifier: float = 1.0) -> None:
-        delay = len(text) * config.TYPING_BASE_DELAY_PER_CHAR * speed_modifier
-        delay = min(max(delay, config.MIN_TYPING_DELAY), config.MAX_TYPING_DELAY)
-        for cb in self._typing_callbacks:
-            try:
-                await cb()
-            except Exception:
-                pass
-        await asyncio.sleep(delay)
-
-    async def simulate_inter_message_pause(self) -> None:
-        await asyncio.sleep(config.INTER_MESSAGE_DELAY)
-
-
-class DoubleTextPipeline:
-    def __init__(self) -> None:
-        self.typing_sim = TypingSimulator()
-        self._send_callbacks: List[Callable[[str], Awaitable[None]]] = []
-
-    def register_send_callback(self, cb: Callable[[str], Awaitable[None]]) -> None:
-        self._send_callbacks.append(cb)
-
-    async def execute(self, raw_text: str, personality: Dict[str, Any]) -> List[str]:
-        buckets = TextSplitter.split(raw_text)
-        speed_mod = personality.get("sliders", {}).get("typing_speed_modifier", 1.0)
-        for i, bucket in enumerate(buckets):
-            await self.typing_sim.simulate_typing(bucket, speed_mod)
-            for cb in self._send_callbacks:
-                try:
-                    await cb(bucket)
-                except Exception as e:
-                    logger.error(f"Send callback failed: {e}")
-            if i < len(buckets) - 1:
-                await self.typing_sim.simulate_inter_message_pause()
-        return buckets
-
 
 class LifestyleSimulator:
     def __init__(self) -> None:
@@ -137,17 +82,18 @@ class LifestyleSimulator:
             return
         for profile in profiles:
             try:
-                await self._process_character(profile["character_id"])
+                await self._process_character(profile["user_id"], profile["character_id"])
             except Exception as e:
                 logger.error(f"Char tick error {profile['character_id']}: {e}")
 
-    async def _process_character(self, character_id: str) -> None:
-        itinerary = await database.get_active_itinerary("default", character_id)
+    async def _process_character(self, user_id: str, character_id: str) -> None:
+        itinerary = await database.get_active_itinerary(user_id, character_id)
         if not itinerary:
             itinerary = self._generate_daily_itinerary()
             await database.save_itinerary(
                 plan_name=itinerary["plan_name"],
                 phases=itinerary["phases"],
+                user_id=user_id,
                 character_id=character_id,
             )
         phases = itinerary["phases"]
@@ -165,16 +111,16 @@ class LifestyleSimulator:
             if current_idx + 1 < len(phases):
                 next_phase = phases[current_idx + 1]
                 if current_time_str >= next_phase["start"]:
-                    await database.update_itinerary_phase(current_idx + 1, "active", character_id=character_id)
-                    await self._on_phase_change(current_idx + 1, next_phase, character_id)
+                    await database.update_itinerary_phase(current_idx + 1, "active", user_id=user_id, character_id=character_id)
+                    await self._on_phase_change(current_idx + 1, next_phase, user_id, character_id)
             return
 
         if current_phase["status"] == "active":
             if current_time_str >= current_phase["end"]:
-                await database.update_itinerary_phase(current_idx, "completed", character_id=character_id)
+                await database.update_itinerary_phase(current_idx, "completed", user_id=user_id, character_id=character_id)
                 if current_idx + 1 < len(phases):
-                    await database.update_itinerary_phase(current_idx + 1, "active", character_id=character_id)
-                    await self._on_phase_change(current_idx + 1, phases[current_idx + 1], character_id)
+                    await database.update_itinerary_phase(current_idx + 1, "active", user_id=user_id, character_id=character_id)
+                    await self._on_phase_change(current_idx + 1, phases[current_idx + 1], user_id, character_id)
 
     def _generate_daily_itinerary(self) -> Dict[str, Any]:
         ai_tz = pytz.timezone(config.AI_TIMEZONE)
@@ -195,10 +141,10 @@ class LifestyleSimulator:
         active_idx = next((i for i, p in enumerate(phases) if p["status"] == "active"), 0)
         return {"plan_name": f"Daily Routine {today_str}", "phases": phases, "current_phase_index": active_idx}
 
-    async def _on_phase_change(self, phase_index: int, phase: Dict[str, Any], character_id: str) -> None:
+    async def _on_phase_change(self, phase_index: int, phase: Dict[str, Any], user_id: str, character_id: str) -> None:
         logger.info(f"Phase changed to {phase['phase']} (index {phase_index}) for {character_id}")
         conflict_checker = PromiseConflictChecker()
-        await conflict_checker.evaluate(phase_index, phase, character_id=character_id)
+        await conflict_checker.evaluate(phase_index, phase, user_id=user_id, character_id=character_id)
 
 
 class PromiseConflictChecker:
@@ -284,7 +230,7 @@ class ActivityBlockManager:
     async def _check_expired_blocks(self) -> None:
         profiles = await database.get_character_profiles()
         for profile in profiles:
-            block = await database.get_active_activity_block(character_id=profile["character_id"])
+            block = await database.get_active_activity_block(profile["user_id"], profile["character_id"])
             if block:
                 try:
                     end = datetime.fromisoformat(block["ends_at"])
@@ -693,7 +639,7 @@ class NeglectTracker:
         psych = await database.get_psychological_state(user_id, character_id)
         dna = await database.get_personality_dna(user_id, character_id)
         threshold = dna.get("ghosting_threshold_hours", 4)
-        history = await database.get_recent_history(user_id, character_id, limit=2)
+        history = await database.get_recent_history(user_id, character_id, limit=4)
         if len(history) < 2:
             return
         last_msg = history[-1]
@@ -748,7 +694,7 @@ class GhostingDetector:
             try:
                 profiles = await database.get_character_profiles()
                 for profile in profiles:
-                    await NeglectTracker.check_ghosting(character_id=profile["character_id"])
+                    await NeglectTracker.check_ghosting(profile["user_id"], profile["character_id"])
             except Exception as e:
                 logger.error(f"Ghosting check error: {e}")
             await asyncio.sleep(config.GHOSTING_CHECK_INTERVAL)
@@ -787,18 +733,23 @@ class AffinityDecayWorker:
     async def _apply_decay(self) -> None:
         profiles = await database.get_character_profiles()
         for profile in profiles:
-            psych = await database.get_psychological_state(character_id=profile["character_id"])
+            user_id = profile["user_id"]
+            psych = await database.get_psychological_state(user_id, profile["character_id"])
             last_reset = psych.get("last_affinity_reset")
-            if last_reset:
-                try:
+            try:
+                should_decay = False
+                if last_reset:
                     last_date = datetime.fromisoformat(last_reset)
-                    if datetime.now(timezone.utc).date() > last_date.date():
-                        psych["affinity_score"] = max(-100, psych.get("affinity_score", 0) - config.AFFINITY_DECAY_PER_DAY)
-                        psych["trust_score"] = max(0, psych.get("trust_score", 100) - config.TRUST_DECAY_PER_DAY)
-                        await database.upsert_psychological_state("default", psych, profile["character_id"])
-                        logger.debug(f"Daily decay applied for {profile['character_id']}")
-                except (ValueError, TypeError):
-                    pass
+                    should_decay = datetime.now(timezone.utc).date() > last_date.date()
+                else:
+                    should_decay = True
+                if should_decay:
+                    psych["affinity_score"] = max(-100, psych.get("affinity_score", 0) - config.AFFINITY_DECAY_PER_DAY)
+                    psych["trust_score"] = max(0, psych.get("trust_score", 100) - config.TRUST_DECAY_PER_DAY)
+                    await database.upsert_psychological_state(user_id, psych, profile["character_id"])
+                    logger.debug(f"Daily decay applied for {profile['character_id']}")
+            except (ValueError, TypeError):
+                pass
 
 
 class PresenceSimulator:
@@ -887,7 +838,6 @@ class WorkerSupervisor:
         self.proactive_text = ProactiveTextWorker(self.orchestrator)
         self.jealousy_scheduler = JealousyTestScheduler(self.orchestrator)
         self.affinity_decay = AffinityDecayWorker()
-        self.text_pipeline = DoubleTextPipeline()
         self.presence = PresenceSimulator()
         self._tasks: List[asyncio.Task] = []
 

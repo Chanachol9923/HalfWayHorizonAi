@@ -462,12 +462,13 @@ def create_ui() -> gr.Blocks:
                 trauma_neglect, trauma_nurture, trust_score_val, affinity_score_val, is_mutated,
                 rel_progress,
             ])
+            save_result = gr.Textbox(label="", lines=1, visible=False)
             save_btn.click(save_persona, inputs=[
                 char_name, rel_stage, mood, char_lore,
                 responsibility, social_butterfly, anxiety,
                 jealousy, loyalty, patience, playfulness, comm_style,
                 needy, typing_speed, proactive, delay_mult, forgiveness, ghosting_thresh,
-            ], outputs=[save_btn])
+            ], outputs=[save_result])
             reset_btn.click(reset_and_reload, outputs=[
                 current_char_md, char_name, rel_stage, mood, char_lore,
                 responsibility, social_butterfly, anxiety,

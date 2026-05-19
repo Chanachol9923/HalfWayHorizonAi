@@ -2,14 +2,12 @@ import asyncio
 import json
 import re
 import random
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List, Tuple
 
 import httpx
 import pytz
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 import config
 import database
@@ -36,13 +34,6 @@ class TyphoonClient:
             )
         return self._client
 
-    @retry(
-        stop=stop_after_attempt(config.TYPHOON_MAX_RETRIES),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(
-            (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError)
-        ),
-    )
     async def generate(
         self,
         messages: List[Dict[str, str]],

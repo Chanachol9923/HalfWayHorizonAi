@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
-from contextlib import asynccontextmanager
 
 import aiofiles
 from loguru import logger
@@ -46,16 +45,6 @@ async def close_connection() -> None:
     if _db_connection is not None:
         await _db_connection.close()
         _db_connection = None
-
-
-@asynccontextmanager
-async def db_cursor():
-    conn = await get_connection()
-    async with _db_lock:
-        cursor = await conn.execute("SELECT 1")
-        await cursor.fetchone()
-    async with _db_lock:
-        yield conn
 
 
 SCHEMA_SQL = """
@@ -300,16 +289,6 @@ async def get_recent_history(
         )
     rows.reverse()
     return [{"role": r[0], "content": r[1]} for r in rows]
-
-
-async def get_conversation_count(user_id: str = "default", character_id: str = "default") -> int:
-    conn = await get_connection()
-    cursor = await conn.execute(
-        "SELECT COUNT(*) FROM conversations WHERE user_id = ? AND character_id = ?",
-        (user_id, character_id),
-    )
-    row = await cursor.fetchone()
-    return row[0] if row else 0
 
 
 async def save_crystallized_memory(
@@ -586,28 +565,6 @@ async def upsert_personality_dna(
             ),
         )
         await conn.commit()
-
-
-async def add_promise(
-    promise_type: str,
-    description: str,
-    user_id: str = "default",
-    character_id: str = "default",
-    source: str = "user",
-    expires_in_hours: Optional[int] = None,
-) -> str:
-    promise_id = str(uuid.uuid4())
-    expires_at = None
-    if expires_in_hours:
-        expires_at = (datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)).isoformat()
-    conn = await get_connection()
-    async with _db_lock:
-        await conn.execute(
-            "INSERT INTO active_promises (promise_id, user_id, character_id, type, description, source, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (promise_id, user_id, character_id, promise_type, description, source, expires_at),
-        )
-        await conn.commit()
-    return promise_id
 
 
 async def get_active_promises(user_id: str = "default", character_id: str = "default") -> List[Dict[str, Any]]:
@@ -1055,24 +1012,6 @@ async def create_backup() -> str:
     return str(backup_path)
 
 
-async def restore_from_backup(backup_path: str) -> bool:
-    if not os.path.exists(backup_path):
-        logger.error(f"Backup file not found: {backup_path}")
-        return False
-    try:
-        async with aiosqlite.connect(backup_path) as backup_conn:
-            backup_conn.row_factory = aiosqlite.Row
-            conn = await get_connection()
-            async with _db_lock:
-                await conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                await conn.backup(backup_conn)
-        logger.info(f"Database restored from backup: {backup_path}")
-        return True
-    except Exception as e:
-        logger.error(f"Restore failed: {e}")
-        return False
-
-
 async def _sync_to_external(backup_path: str) -> None:
     try:
         import httpx
@@ -1098,66 +1037,6 @@ async def periodic_backup_task() -> None:
             await clear_expired_promises()
         except Exception as e:
             logger.error(f"Periodic backup failed: {e}")
-
-
-class HFStateStore:
-    def __init__(self) -> None:
-        self._token: str = config.HF_TOKEN
-        self._repo_id: str = config.HF_DATASET_REPO
-        self._db_path: str = config.DATABASE_PATH
-
-    async def download_db_state(self) -> bool:
-        if not self._token:
-            logger.info("HF_TOKEN not set, skipping DB restore from Hub")
-            return False
-        try:
-            from huggingface_hub import hf_hub_download
-            local_path = await asyncio.to_thread(
-                hf_hub_download,
-                repo_id=self._repo_id,
-                filename="companion.db",
-                token=self._token,
-                repo_type="dataset",
-                local_dir=config.DATA_DIR,
-                force_download=True,
-            )
-            logger.info(f"DB restored from HF Hub: {local_path}")
-            return True
-        except Exception as e:
-            logger.warning(f"HF DB restore failed (first run?): {e}")
-            return False
-
-    async def upload_db_state(self) -> bool:
-        if not self._token:
-            return False
-        if not os.path.isfile(self._db_path):
-            logger.warning("No local DB file to upload")
-            return False
-        try:
-            from huggingface_hub import HfApi
-            api = HfApi(token=self._token)
-            await asyncio.to_thread(
-                api.upload_file,
-                path_or_fileobj=self._db_path,
-                path_in_repo="companion.db",
-                repo_id=self._repo_id,
-                repo_type="dataset",
-            )
-            logger.info("DB state uploaded to HF Hub")
-            return True
-        except Exception as e:
-            logger.warning(f"HF DB upload failed: {e}")
-            return False
-
-
-_hf_store: Optional[HFStateStore] = None
-
-
-def get_hf_store() -> HFStateStore:
-    global _hf_store
-    if _hf_store is None:
-        _hf_store = HFStateStore()
-    return _hf_store
 
 
 async def close() -> None:
