@@ -145,11 +145,11 @@ async def get_relationship_progress() -> str:
     return f"📊 {stage} → {next_name}\n{bar} {pct:.0f}%\n💕 Affinity: {affinity}/100"
 
 
-async def create_character(name: str, gender: str, country: str, city: str, lore: str = "") -> str:
+async def create_character(name: str, gender: str, country: str, city: str, lore: str = "", timezone: str = "Asia/Bangkok") -> str:
     global _current_character_id
     char_id = await database.create_character_profile(
         user_id=_current_user_id, name=name, gender=gender,
-        country=country, city=city, lore=lore,
+        country=country, city=city, lore=lore, timezone=timezone,
     )
     await database.get_personality_dna(_current_user_id, char_id)
     await database.get_psychological_state(_current_user_id, char_id)
@@ -246,6 +246,7 @@ def create_ui() -> gr.Blocks:
                         placeholder="Write a detailed backstory for your character.",
                         lines=4,
                     )
+                    new_timezone = gr.Textbox(label="Timezone", value="Asia/Bangkok")
                     create_char_btn = gr.Button("✨ Create Character", variant="primary")
                     char_result = gr.Textbox(label="Result", lines=1)
 
@@ -264,6 +265,7 @@ def create_ui() -> gr.Blocks:
                         placeholder="Write a detailed backstory for your character.",
                         lines=4,
                     )
+                    edit_timezone = gr.Textbox(label="Timezone")
                     with gr.Row():
                         save_edit_btn = gr.Button("💾 Save Changes", variant="primary")
                         switch_char_btn = gr.Button("🔄 Switch to This Character")
@@ -279,32 +281,33 @@ def create_ui() -> gr.Blocks:
                 choices = [f"{p['name']} ({p['character_id']})" for p in profiles]
                 return gr.update(choices=choices)
 
-            async def do_create(name, gender, country, city, lore):
-                cid = await create_character(name, gender, country, city, lore=lore)
+            async def do_create(name, gender, country, city, lore, timezone):
+                cid = await create_character(name, gender, country, city, lore=lore, timezone=timezone)
                 choices = await refresh_char_list()
                 return f"✅ Created: {name} ({cid})", choices
 
             async def do_select_char(selection):
                 if not selection or "(" not in selection:
-                    return "", "", "", "", ""
+                    return "", "", "", "", "", ""
                 cid = selection.split("(")[-1].rstrip(")")
                 profile = await database.get_character_profile(cid)
                 if not profile:
-                    return "", "", "", "", ""
+                    return "", "", "", "", "", ""
                 return (
                     profile.get("name", ""),
                     profile.get("gender", "female"),
                     profile.get("country", ""),
                     profile.get("city", ""),
                     profile.get("lore", ""),
+                    profile.get("timezone", "Asia/Bangkok"),
                 )
 
-            async def do_save_edit(selection, name, gender, country, city, lore):
+            async def do_save_edit(selection, name, gender, country, city, lore, timezone):
                 if not selection or "(" not in selection:
                     return "Please select a character"
                 cid = selection.split("(")[-1].rstrip(")")
                 await database.update_character_profile(cid, {
-                    "name": name, "gender": gender, "country": country, "city": city, "lore": lore,
+                    "name": name, "gender": gender, "country": country, "city": city, "lore": lore, "timezone": timezone,
                 })
                 choices = await refresh_char_list()
                 char_result_val = f"✅ Saved: {name}"
@@ -337,14 +340,14 @@ def create_ui() -> gr.Blocks:
                 choices = await refresh_char_list()
                 return f"🗑️ Deleted: {profile['name']} ({cid})"
 
-            create_char_btn.click(do_create, [new_name, new_gender, new_country, new_city, new_lore], [char_result, char_dropdown])
-            char_dropdown.change(do_select_char, [char_dropdown], [edit_name, edit_gender, edit_country, edit_city, edit_lore])
-            save_edit_btn.click(do_save_edit, [char_dropdown, edit_name, edit_gender, edit_country, edit_city, edit_lore], [edit_result]).then(refresh_char_list, outputs=[char_dropdown])
+            create_char_btn.click(do_create, [new_name, new_gender, new_country, new_city, new_lore, new_timezone], [char_result, char_dropdown])
+            char_dropdown.change(do_select_char, [char_dropdown], [edit_name, edit_gender, edit_country, edit_city, edit_lore, edit_timezone])
+            save_edit_btn.click(do_save_edit, [char_dropdown, edit_name, edit_gender, edit_country, edit_city, edit_lore, edit_timezone], [edit_result]).then(refresh_char_list, outputs=[char_dropdown])
             switch_char_btn.click(do_switch_and_load, [char_dropdown], [edit_result, chatbot, char_header])
             delete_char_btn.click(do_delete_char, [char_dropdown], [edit_result]).then(refresh_char_list, outputs=[char_dropdown])
             refresh_list_btn.click(refresh_char_list, outputs=[char_dropdown])
             ui.load(refresh_char_list, outputs=[char_dropdown])
-            ui.load(do_select_char, [char_dropdown], [edit_name, edit_gender, edit_country, edit_city, edit_lore])
+            ui.load(do_select_char, [char_dropdown], [edit_name, edit_gender, edit_country, edit_city, edit_lore, edit_timezone])
 
         with gr.Tab("🎭 Persona Settings") as persona_tab:
             gr.Markdown("### 🎭 Personality Configuration")
