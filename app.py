@@ -72,7 +72,7 @@ async def _handle_chat(message: str, history: List[List[str]]) -> str:
         return response
     except Exception as e:
         logger.error(f"Chat processing error: {e}")
-        return f"...sorry, give me a moment. ({type(e).__name__})"
+        return f"Sorry, give me a moment. ({type(e).__name__})"
 
 
 async def _chat_wrapper(message: str, history: List[List[str]]) -> str:
@@ -695,7 +695,7 @@ async def _run_telegram_bot() -> None:
         except Exception as e:
             logger.error(f"Telegram handle_text: {e}")
             try:
-                await _send(chat_id, "...sorry, give me a moment.")
+                    await _send(chat_id, "Sorry, give me a moment.")
             except Exception:
                 pass
 

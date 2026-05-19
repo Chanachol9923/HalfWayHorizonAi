@@ -792,10 +792,10 @@ Your name is {char_name}. Just be real. Short and natural."""
     def _fallback_response(self, state: Dict[str, Any]) -> str:
         mood = state["psychological_state"]["short_term_mood"]
         fallbacks = {
-            "happy": "Hmm? What's up? 🥰", "tired": "Sorry, I'm a bit tired right now... 😴",
+            "happy": "Hmm? What's up? 🥰", "tired": "Sorry, I'm a bit tired right now 😴",
             "annoyed": "Yeah?", "clingy": "Heyyy, you're finally texting! 🥺",
-            "pouty": "Hmph. 🙄", "anxious": "Hey... is everything okay? 🥲",
-            "sad": "...", "playful": "Hehe~ 😋", "romantic": "I miss you 💕",
+            "pouty": "Hmph. 🙄", "anxious": "Hey, is everything okay? 🥲",
+            "sad": "I'm feeling a bit down...", "playful": "Hehe~ 😋", "romantic": "I miss you 💕",
             "jealous": "Oh? Who's that? 😒", "grateful": "Thank you 🥹",
             "lonely": "I'm lonely... 🥺", "excited": "Omg really?! 😆", "moody": "Hmm.",
         }
