@@ -783,15 +783,21 @@ async def create_character_profile(
     return character_id
 
 
-async def get_character_profiles(user_id: str = "default") -> List[Dict[str, Any]]:
+async def get_character_profiles(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
     conn = await get_connection()
-    rows = await conn.execute_fetchall(
-        "SELECT * FROM character_profiles WHERE user_id = ? AND is_active = 1 ORDER BY created_at ASC",
-        (user_id,),
-    )
+    if user_id:
+        rows = await conn.execute_fetchall(
+            "SELECT * FROM character_profiles WHERE user_id = ? AND is_active = 1 ORDER BY created_at ASC",
+            (user_id,),
+        )
+    else:
+        rows = await conn.execute_fetchall(
+            "SELECT * FROM character_profiles WHERE is_active = 1 ORDER BY created_at ASC",
+        )
     return [
         {
             "character_id": r["character_id"],
+            "user_id": r["user_id"],
             "name": r["name"],
             "gender": r["gender"],
             "country": r["country"],
