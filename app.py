@@ -600,6 +600,19 @@ async def _run_telegram_bot() -> None:
     async def _send(chat_id: int, text: str) -> None:
         await ptb_bot.send_message(chat_id=chat_id, text=text)
 
+    def _pick_segments(buckets: list) -> list:
+        roll = random.random()
+        if roll < 0.40: target = 1
+        elif roll < 0.70: target = 2
+        elif roll < 0.90: target = 3
+        elif roll < 0.95: target = 4
+        else: target = 5
+        if len(buckets) > target:
+            if target == 1:
+                return [' '.join(buckets)]
+            return buckets[:target-1] + [' '.join(buckets[target-1:])]
+        return buckets
+
     # ---- Proactive callback ----
     async def _telegram_send(char_id: str, msg: str) -> None:
         try:
@@ -614,7 +627,7 @@ async def _run_telegram_bot() -> None:
         except (ValueError, Exception):
             return
         dna = await database.get_personality_dna(tg_user_id, char_id)
-        buckets = _filter_buckets(TextSplitter.split(msg))
+        buckets = _pick_segments(_filter_buckets(TextSplitter.split(msg)))
         for i, b in enumerate(buckets):
             if b.strip():
                 try:
@@ -622,7 +635,7 @@ async def _run_telegram_bot() -> None:
                 except Exception as e:
                     logger.warning(f"Telegram proactive send failed: {e}")
                 if i < len(buckets) - 1:
-                    gap = max(0.3, min(len(b) * random.uniform(0.3, 0.6), 3.0))
+                    gap = max(0.3, min(len(b) * random.uniform(0.5, 0.7), 3.0))
                     await asyncio.sleep(gap)
 
     if _supervisor:
@@ -665,20 +678,7 @@ async def _run_telegram_bot() -> None:
                 user_message=text, user_id=user_id, character_id=char_id,
                 platform="telegram", presence_context_data=(read_delay, presence_ctx),
             )
-            buckets = _filter_buckets(TextSplitter.split(response))
-            roll = random.random()
-            if roll < 0.40:
-                target = 1
-            elif roll < 0.70:
-                target = 2
-            elif roll < 0.90:
-                target = 3
-            elif roll < 0.95:
-                target = 4
-            else:
-                target = 5
-            if len(buckets) > target:
-                buckets = buckets[:max(1, target-1)] + [' '.join(buckets[max(1, target-1):])]
+            buckets = _pick_segments(_filter_buckets(TextSplitter.split(response)))
             for i, b in enumerate(buckets):
                 if b.strip():
                     delay = PresenceManager.calculate_typing_delay(b, dna)
@@ -686,7 +686,7 @@ async def _run_telegram_bot() -> None:
                         await asyncio.sleep(min(delay, 4))
                     await _send(chat_id, b.strip())
                     if i < len(buckets) - 1:
-                        gap = max(0.3, min(len(b) * random.uniform(0.3, 0.6), 3.0))
+                        gap = max(0.3, min(len(b) * random.uniform(0.5, 0.7), 3.0))
                         await asyncio.sleep(gap)
         except Exception as e:
             logger.error(f"Telegram handle_text: {e}")
