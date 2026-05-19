@@ -782,6 +782,11 @@ Your name is {char_name}. Just be real. Short and natural."""
         text = re.sub(r'\n{3,}', '\n\n', text)
         text = re.sub(r'^["\']|["\']$', '', text)
         text = text.replace('*', '')
+        text = text.replace('…', '')
+        text = re.sub(r'\b\.\.\.\b', '', text)
+        text = re.sub(r'^\.\.\.\s*', '', text)
+        text = re.sub(r'\s*\.\.\.$', '', text)
+        text = re.sub(r' +', ' ', text).strip()
         return text
 
     def _fallback_response(self, state: Dict[str, Any]) -> str:
