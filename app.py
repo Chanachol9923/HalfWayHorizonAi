@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re as _re
 import sys
 import time
 from datetime import datetime, timezone
@@ -29,6 +30,12 @@ _current_user_id: str = "default"
 _current_character_id: str = "default"
 _telegram_app: Optional[Any] = None
 _bot_tasks: List[asyncio.Task] = []
+
+# Filter out buckets that are just "..." or "…" (empty/meaningless response segments)
+_ELLIPSIS_RE = _re.compile(r'^[\s…\.‥。‿⁞]{1,5}$')
+
+def _filter_buckets(buckets: List[str]) -> List[str]:
+    return [b for b in buckets if not _ELLIPSIS_RE.match(b)]
 
 
 async def _handle_chat(message: str, history: List[List[str]]) -> str:
@@ -192,7 +199,7 @@ def create_ui() -> gr.Blocks:
                 chat_history = chat_history or []
                 dna = await database.get_personality_dna(_current_user_id, _current_character_id)
                 bot_msg = await _chat_wrapper(message, chat_history)
-                buckets = TextSplitter.split(bot_msg)
+                buckets = _filter_buckets(TextSplitter.split(bot_msg))
                 if len(buckets) > 1:
                     chat_history.append([message, buckets[0]])
                     for b in buckets[1:]:
@@ -604,7 +611,7 @@ async def _run_telegram_bot() -> None:
             uid = int(user_id[len("telegram_"):])
         except (ValueError, Exception):
             return
-        buckets = TextSplitter.split(msg)
+        buckets = _filter_buckets(TextSplitter.split(msg))
         for i, b in enumerate(buckets):
             if b.strip():
                 try:
@@ -654,7 +661,7 @@ async def _run_telegram_bot() -> None:
                 user_message=text, user_id=user_id, character_id=char_id,
                 platform="telegram", presence_context_data=(read_delay, presence_ctx),
             )
-            buckets = TextSplitter.split(response)
+            buckets = _filter_buckets(TextSplitter.split(response))
             for i, b in enumerate(buckets):
                 if b.strip():
                     delay = PresenceManager.calculate_typing_delay(b, dna)
