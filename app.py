@@ -707,7 +707,8 @@ async def _run_telegram_bot() -> None:
             f"/info — View character info\n/mood happy|sad|angry|anxious — Change mood\n"
             f"/stage Stranger|Friend|Crush|Dating|Lover — Change relationship stage\n"
             f"/name <new name> — Change character name\n/country <country> — Set country\n"
-            f"/city <city> — Set city\n/lore — View lore\n/lore_set <text> — Set lore\n"
+            f"/city <city> — Set city\n/timezone <timezone> — Set timezone (e.g. Asia/Tokyo)\n"
+            f"/lore — View lore\n/lore_set <text> — Set lore\n"
             f"/version — Check bot version")
 
     async def handle_info(uid: int, chat_id: int) -> None:
@@ -718,7 +719,7 @@ async def _run_telegram_bot() -> None:
         dna = await database.get_personality_dna(user_id, char_id)
         lines = [
             f"🎭 **{char['name']}** ({char['gender']})",
-            f"📍 {char.get('city', '?')}, {char.get('country', '?')}",
+            f"📍 {char.get('city', '?')}, {char.get('country', '?')}  🕐 {char.get('timezone', 'Asia/Bangkok')}",
             f"📖 Stage: **{psych.get('relationship_stage', 'Stranger')}**",
             f"😊 Mood: **{psych.get('short_term_mood', 'happy')}**",
             f"❤️ Affinity: {psych.get('affinity', 0):.1f}",
@@ -765,6 +766,9 @@ async def _run_telegram_bot() -> None:
         elif cmd == "city":
             await database.update_character_profile(char_id, {"city": val})
             await _send(chat_id, f"✅ City changed to **{val}**")
+        elif cmd == "timezone":
+            await database.update_character_profile(char_id, {"timezone": val})
+            await _send(chat_id, f"✅ Timezone changed to **{val}**")
 
     async def handle_lore(uid: int, chat_id: int, text: str = "") -> None:
         char_id = await _get_or_create_char(uid)
@@ -799,6 +803,8 @@ async def _run_telegram_bot() -> None:
             asyncio.ensure_future(handle_set(uid, chat_id, "country", text[9:]))
         elif text.startswith("/city "):
             asyncio.ensure_future(handle_set(uid, chat_id, "city", text[6:]))
+        elif text.startswith("/timezone "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "timezone", text[10:]))
         else:
             asyncio.ensure_future(handle_text(uid, chat_id, text))
 
