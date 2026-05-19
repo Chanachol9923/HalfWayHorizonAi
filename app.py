@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import random
 import re as _re
 import sys
 import time
@@ -621,7 +622,7 @@ async def _run_telegram_bot() -> None:
                 except Exception as e:
                     logger.warning(f"Telegram proactive send failed: {e}")
                 if i < len(buckets) - 1:
-                    gap = max(0.4, min(len(b) * 0.05, 3.0))
+                    gap = max(0.4, min(len(b) * random.uniform(0.05, 0.2), 3.0))
                     await asyncio.sleep(gap)
 
     if _supervisor:
@@ -672,7 +673,7 @@ async def _run_telegram_bot() -> None:
                         await asyncio.sleep(min(delay, 4))
                     await _send(chat_id, b.strip())
                     if i < len(buckets) - 1:
-                        gap = max(0.3, min(len(b) * 0.04, 3.0))
+                        gap = max(0.3, min(len(b) * random.uniform(0.05, 0.2), 3.0))
                         await asyncio.sleep(gap)
         except Exception as e:
             logger.error(f"Telegram handle_text: {e}")
