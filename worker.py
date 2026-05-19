@@ -346,6 +346,7 @@ class ProactiveTextWorker:
         while self._running:
             try:
                 await self._check_proactive_text()
+                await self._check_ghosting_followup()
             except Exception as e:
                 logger.error(f"Proactive text error: {e}")
             await asyncio.sleep(config.PROACTIVE_TEXT_CHECK_INTERVAL)
@@ -385,6 +386,50 @@ class ProactiveTextWorker:
                 )
                 await database.set_app_state(f"last_proactive_{char_id}", now.isoformat())
                 await self._handle_activity_block_from_message(char_id, msg)
+
+    CRUSH_OR_ABOVE = ["Crush", "Dating", "Lover", "Fiance", "Spouse"]
+
+    async def _check_ghosting_followup(self) -> None:
+        profiles = await database.get_character_profiles()
+        for profile in profiles:
+            char_id = profile["character_id"]
+            user_id = profile.get("user_id", "")
+            if not user_id.startswith("telegram_"):
+                continue
+            history = await database.get_recent_history(user_id, char_id, limit=3)
+            if not history:
+                continue
+            # Only if last message was from AI (user hasn't replied)
+            if history[-1].get("role") != "assistant":
+                continue
+            psych = await database.get_psychological_state(user_id, char_id)
+            stage = psych.get("relationship_stage", "Stranger")
+            if stage not in self.CRUSH_OR_ABOVE:
+                continue
+            # Check how long since AI's last message
+            now = datetime.now(timezone.utc)
+            last_raw = await database.get_app_state(f"last_ghosting_check_{char_id}")
+            if last_raw:
+                last_time = datetime.fromisoformat(last_raw)
+                hours_since = (now - last_time).total_seconds() / 3600
+                if hours_since < 2:
+                    continue
+            # 30% chance
+            if random.random() > 0.3:
+                continue
+            await database.set_app_state(f"last_ghosting_check_{char_id}", now.isoformat())
+            msg = await self._orchestrator.generate_ghosting_followup(character_id=char_id, user_id=user_id)
+            if msg:
+                logger.info(f"Ghosting follow-up from {char_id}: {msg[:50]}...")
+                for cb in self._send_callbacks:
+                    try:
+                        await cb(char_id, msg)
+                    except Exception as e:
+                        logger.error(f"Ghosting follow-up send failed: {e}")
+                await database.save_message(
+                    role="assistant", content=msg, platform="system",
+                    character_id=char_id, metadata={"type": "ghosting_followup"},
+                )
 
     async def _handle_activity_block_from_message(self, character_id: str, message: str) -> None:
         msg_lower = message.lower()

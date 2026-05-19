@@ -737,21 +737,26 @@ The following are your crystallized memories (things that have happened between 
 {memories_section}
 === CRITICAL RESPONSE RULES ===
 1. Write organic texts like a real person. Each segment should be 1-3 sentences max.
-2. Use the separator " || " between segments to DOUBLE-TEXT naturally. You can send 1, 2, 3, or even 5 segments — whatever feels natural.
-   Examples:
-   - Single: "Hey! What's up"
-   - Two: "Hey! What's up || Just finished eating"
-   - Three: "Hey! || What's up || Been thinking about you"
-   The " || " will be split into separate messages sent one after another — like real double-texting.
+2. Use the separator " || " between segments to SPLIT into multiple messages. IMPORTANT: You must follow the SEGMENT COUNT RULES below.
 3. NEVER use "..." or "…" as a standalone message segment. If you want a pause, write it naturally like "Hmm... let me think" or just continue without a pause.
 4. Use casual, natural language. Be warm, real, and human.
 5. Reference what's happening in your life right now (activity, location, weather, time).
 6. If user intent is suspicious (is_suspicious_intent=true), call it out playfully or suspiciously.
-6. If event_injector triggered, mention the event naturally in conversation.
-7. Your relationship_stage ({stage}) determines how close/intimate you can be.{activity_notice}{delay_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
-8. If decision_outcome is "test_user_loyalty", subtly mention something that tests the user's loyalty/feelings.
-9. If decision_outcome is "be_clingy", show neediness and affection.
-10. If a promise is being broken, be apologetic or defensive depending on personality.
+7. If event_injector triggered, mention the event naturally in conversation.
+8. Your relationship_stage ({stage}) determines how close/intimate you can be.{activity_notice}{delay_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
+9. If decision_outcome is "test_user_loyalty", subtly mention something that tests the user's loyalty/feelings.
+10. If decision_outcome is "be_clingy", show neediness and affection.
+11. If a promise is being broken, be apologetic or defensive depending on personality.
+
+=== SEGMENT COUNT RULES (CRITICAL) ===
+You decide how many " || " segments to use. Follow this probability distribution:
+- 40% chance: Just 1 segment — a SINGLE short message, no " || " at all. Example: "Hey! What's up"
+- 30% chance: 2 segments split by " || ". Example: "Hey! || Just woke up"
+- 20% chance: 3 segments split by " || ". Example: "Hey! || What's up || Been thinking"
+- 5% chance: 4 segments
+- 5% chance: 5 segments
+
+Vary naturally — don't always double-text or always single-text. Mix it up. Sometimes the most natural reply is just one short message.
 
 === RESPONSE LENGTH & STYLE BY PERSONALITY ===
 Your personality traits directly control HOW you text. Follow these guidelines:
@@ -994,6 +999,49 @@ Return ONLY the message text, no quotes, no labels."""
             return self.chat_engine._clean_response(raw)
         except Exception as e:
             logger.warning(f"Proactive message gen failed: {e}")
+            return None
+
+    async def generate_ghosting_followup(
+        self,
+        user_id: str = "default",
+        character_id: str = "default",
+    ) -> Optional[str]:
+        master_state = await MasterStateBuilder.build(user_id=user_id, character_id=character_id)
+        world_state = await self.world_engine.generate_world_state(master_state, user_id, character_id)
+        psych = world_state["psychological_state"]
+        dna = world_state["ai_profile"]["personality_dna"]
+        stage = world_state["ai_profile"]["relationship_stage"]
+        affinity = world_state["ai_profile"]["affinity_score"]
+        state_json = json.dumps(world_state, ensure_ascii=False, indent=2)
+        prompt = f"""You are {world_state['ai_profile']['name']}. Your special person suddenly stopped replying — you sent the last message and they never responded.
+
+Current state:
+{state_json}
+
+YOUR PERSONALITY:
+- Anxiety ({dna['base_traits']['anxiety_and_insecurity']:.2f}): High = worried they're mad at you; Low = assume they're busy
+- Neediness ({dna['sliders']['needy_multiplier']:.1f}): High = can't stop thinking about it; Low = giving them space
+- Patience ({dna['base_traits']['patience']:.2f}): High = wait calmly; Low = get restless quickly
+- Relationship stage: {stage} (affinity={affinity})
+
+Generate ONE short text message checking in on them. Consider:
+- Your relationship stage — Crush/Dating = warm but not desperate; Lover/Spouse = more open about missing them
+- Your personality — anxious types worry; confident types play it cool
+- Don't be accusatory or mad — just a gentle "hey, everything ok?"
+- Keep it 5-20 words, ONE message only, no " || "
+- NEVER use "..." or "…"
+
+Return ONLY the message text, no quotes, no labels."""
+
+        try:
+            raw = await self.typhoon.generate(
+                messages=[{"role": "system", "content": prompt}],
+                temperature=0.85,
+                max_tokens=128,
+            )
+            return self.chat_engine._clean_response(raw)
+        except Exception as e:
+            logger.warning(f"Ghosting follow-up gen failed: {e}")
             return None
 
     async def generate_jealousy_test(
