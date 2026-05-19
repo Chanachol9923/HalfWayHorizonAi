@@ -592,9 +592,6 @@ async def _run_telegram_bot() -> None:
     async def _send(chat_id: int, text: str) -> None:
         await ptb_bot.send_message(chat_id=chat_id, text=text)
 
-    async def _action(chat_id: int) -> None:
-        await ptb_bot.send_chat_action(chat_id=chat_id, action="typing")
-
     # ---- Proactive callback ----
     async def _telegram_send(char_id: str, msg: str) -> None:
         try:
@@ -650,15 +647,8 @@ async def _run_telegram_bot() -> None:
             read_delay, presence_ctx = await PresenceManager.calculate_delay_and_context(presence, psych, dna)
             total = read_delay + (fast or 0)
 
-            await _action(chat_id)
-            if total > 3:
-                await asyncio.sleep(2)
-                await _action(chat_id)
-                left = total - 2
-                if left > 0:
-                    await asyncio.sleep(left)
-            else:
-                await asyncio.sleep(total)
+            if total > 1:
+                await asyncio.sleep(min(total, 3))
 
             response = await process_chat(
                 user_message=text, user_id=user_id, character_id=char_id,
@@ -668,15 +658,11 @@ async def _run_telegram_bot() -> None:
             for i, b in enumerate(buckets):
                 if b.strip():
                     delay = PresenceManager.calculate_typing_delay(b, dna)
-                    if delay > 1:
-                        await asyncio.sleep(1)
-                        await _action(chat_id)
-                        await asyncio.sleep(delay - 1)
-                    elif delay > 0:
-                        await asyncio.sleep(delay)
+                    if delay > 0.5:
+                        await asyncio.sleep(min(delay, 2))
                     await _send(chat_id, b.strip())
                     if i < len(buckets) - 1:
-                        await asyncio.sleep(0.8)
+                        await asyncio.sleep(0.5)
         except Exception as e:
             logger.error(f"Telegram handle_text: {e}")
             try:
