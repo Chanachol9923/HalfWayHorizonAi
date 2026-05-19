@@ -824,6 +824,7 @@ Your name is {char_name}. Be alive. Be real. Be human."""
         text = text.strip()
         text = re.sub(r'\n{3,}', '\n\n', text)
         text = re.sub(r'^["\']|["\']$', '', text)
+        text = text.replace('*', '')
         return text
 
     def _fallback_response(self, state: Dict[str, Any]) -> str:
