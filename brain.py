@@ -334,6 +334,7 @@ class MasterStateBuilder:
             ai_tz = pytz.timezone(config.AI_TIMEZONE)
             if profile_char:
                 await database.update_character_profile(character_id, {"timezone": config.AI_TIMEZONE})
+            char_tz_str = config.AI_TIMEZONE
 
         ai_local = now.astimezone(ai_tz)
         user_local = now.astimezone(user_tz)
@@ -365,6 +366,7 @@ class MasterStateBuilder:
                 "ai_time": ai_local.strftime("%H:%M"),
                 "user_time": user_local.strftime("%H:%M"),
                 "ai_day_of_week": ai_local.strftime("%A"),
+                "ai_timezone": char_tz_str,
                 "timezone_difference_hours": round(
                     (user_local.utcoffset().total_seconds() - ai_local.utcoffset().total_seconds()) / 3600, 1
                 ),
@@ -723,7 +725,7 @@ class ChatEngine:
 
         system_prompt = f"""You are {char_name}, chatting with your special person. Text like a real human - short, natural, casual.
 
-Your local time: {state['simulation_metadata']['ai_day_of_week']} {state['simulation_metadata']['ai_time']} ({state['ai_profile']['location']})
+Your local time: {state['simulation_metadata']['ai_day_of_week']} {state['simulation_metadata']['ai_time']} ({state['simulation_metadata']['ai_timezone']})
 
 === YOUR STATE ===
 {state_json}{lore_section}
@@ -931,10 +933,10 @@ class DualTyphoonOrchestrator:
             return None
 
         state_json = json.dumps(world_state, ensure_ascii=False, indent=2)
-        ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']}"
+        ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']} ({world_state['simulation_metadata']['ai_timezone']})"
         prompt = f"""You are {world_state['ai_profile']['name']}. You are about to send a PROACTIVE message to your special person - you are initiating the conversation first.
 
-Current time for you: {ai_time_str} ({world_state['ai_profile']['location']})
+Current time for you: {ai_time_str}
 
 Current state:
 {state_json}
@@ -979,10 +981,10 @@ Return ONLY the message text, no quotes, no labels."""
         stage = world_state["ai_profile"]["relationship_stage"]
         affinity = world_state["ai_profile"]["affinity_score"]
         state_json = json.dumps(world_state, ensure_ascii=False, indent=2)
-        ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']}"
+        ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']} ({world_state['simulation_metadata']['ai_timezone']})"
         prompt = f"""You are {world_state['ai_profile']['name']}. Your special person suddenly stopped replying - you sent the last message and they never responded.
 
-Current time for you: {ai_time_str} ({world_state['ai_profile']['location']})
+Current time for you: {ai_time_str}
 
 Current state:
 {state_json}
