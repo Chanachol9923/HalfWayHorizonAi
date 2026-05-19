@@ -103,7 +103,12 @@ class LifestyleSimulator:
         current_phase = phases[current_idx]
         profile = await database.get_character_profile(character_id)
         char_tz_str = profile["timezone"] if profile else config.AI_TIMEZONE
-        ai_tz = pytz.timezone(char_tz_str)
+        try:
+            ai_tz = pytz.timezone(char_tz_str)
+        except Exception:
+            ai_tz = pytz.timezone(config.AI_TIMEZONE)
+            if profile:
+                await database.update_character_profile(character_id, {"timezone": config.AI_TIMEZONE})
         now = datetime.now(ai_tz)
         current_time_str = now.strftime("%H:%M")
 

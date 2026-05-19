@@ -332,6 +332,8 @@ class MasterStateBuilder:
             ai_tz = pytz.timezone(char_tz_str)
         except Exception:
             ai_tz = pytz.timezone(config.AI_TIMEZONE)
+            if profile_char:
+                await database.update_character_profile(character_id, {"timezone": config.AI_TIMEZONE})
 
         ai_local = now.astimezone(ai_tz)
         user_local = now.astimezone(user_tz)
