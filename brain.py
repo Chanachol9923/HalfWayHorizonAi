@@ -730,7 +730,6 @@ class ChatEngine:
 === GUIDELINES ===
 - Keep each message short (1-3 sentences per segment). No essays, no over-explaining.
 - Use " || " to split into multiple messages only if natural. Usually just ONE short message is best.
-- NEVER use "..." or "…" as a standalone segment.
 - Be warm and human. Vary length naturally - sometimes just "Hey!", sometimes a short thought.
 - Reference your life naturally if relevant (activity, time, mood).{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
 - Personality: comm_style={dna['base_traits']['communication_style']:.1f} (0=brief, 1=chatty), playfulness={dna['base_traits']['playfulness']:.1f}, anxiety={dna['base_traits']['anxiety_and_insecurity']:.1f}, neediness={dna['sliders']['needy_multiplier']:.1f}
@@ -949,7 +948,6 @@ Generate a natural, short message that matches your personality. Consider:
 - Be casual and natural, like a LINE/WhatsApp message
 - Length: match your personality. Playful/social = longer. Anxious/quiet = shorter.
 - NEVER use " || " separator - this is ONE single message, not double-text
-- NEVER send just "..." or "…" - write a real message or nothing at all
 
 Return ONLY the message text, no quotes, no labels."""
 
@@ -992,7 +990,6 @@ Generate ONE short text message checking in on them. Consider:
 - Your personality - anxious types worry; confident types play it cool
 - Don't be accusatory or mad - just a gentle "hey, everything ok?"
 - Keep it 5-20 words, ONE message only, no " || "
-- NEVER use "..." or "…"
 
 Return ONLY the message text, no quotes, no labels."""
 
