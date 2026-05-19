@@ -597,11 +597,15 @@ async def _run_telegram_bot() -> None:
 
     # ---- Proactive callback ----
     async def _telegram_send(char_id: str, msg: str) -> None:
-        if not char_id.startswith("telegram_"):
-            return
         try:
-            uid = int(char_id[len("telegram_"):])
-        except ValueError:
+            profile = await database.get_character_profile(char_id)
+            if not profile:
+                return
+            user_id = profile.get("user_id", "")
+            if not user_id.startswith("telegram_"):
+                return
+            uid = int(user_id[len("telegram_"):])
+        except (ValueError, Exception):
             return
         buckets = TextSplitter.split(msg)
         for i, b in enumerate(buckets):

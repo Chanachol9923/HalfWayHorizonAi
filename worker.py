@@ -354,6 +354,10 @@ class ProactiveTextWorker:
         profiles = await database.get_character_profiles()
         for profile in profiles:
             char_id = profile["character_id"]
+            user_id = profile.get("user_id", "")
+            # Only send proactive texts for characters linked to Telegram
+            if not user_id.startswith("telegram_"):
+                continue
             now = datetime.now(timezone.utc)
             last_raw = await database.get_app_state(f"last_proactive_{char_id}")
             if last_raw:
