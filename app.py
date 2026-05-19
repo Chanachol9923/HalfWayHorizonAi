@@ -609,8 +609,10 @@ async def _run_telegram_bot() -> None:
             if not user_id.startswith("telegram_"):
                 return
             uid = int(user_id[len("telegram_"):])
+            tg_user_id = user_id
         except (ValueError, Exception):
             return
+        dna = await database.get_personality_dna(tg_user_id, char_id)
         buckets = _filter_buckets(TextSplitter.split(msg))
         for i, b in enumerate(buckets):
             if b.strip():
@@ -619,7 +621,8 @@ async def _run_telegram_bot() -> None:
                 except Exception as e:
                     logger.warning(f"Telegram proactive send failed: {e}")
                 if i < len(buckets) - 1:
-                    await asyncio.sleep(0.8)
+                    gap = max(0.4, min(len(b) * 0.05, 3.0))
+                    await asyncio.sleep(gap)
 
     if _supervisor:
         _supervisor.proactive_text.register_send_callback(_telegram_send)
@@ -666,10 +669,11 @@ async def _run_telegram_bot() -> None:
                 if b.strip():
                     delay = PresenceManager.calculate_typing_delay(b, dna)
                     if delay > 0.5:
-                        await asyncio.sleep(min(delay, 2))
+                        await asyncio.sleep(min(delay, 4))
                     await _send(chat_id, b.strip())
                     if i < len(buckets) - 1:
-                        await asyncio.sleep(0.5)
+                        gap = max(0.3, min(len(b) * 0.04, 3.0))
+                        await asyncio.sleep(gap)
         except Exception as e:
             logger.error(f"Telegram handle_text: {e}")
             try:
