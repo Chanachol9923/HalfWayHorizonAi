@@ -167,7 +167,7 @@ TEXT_SPLIT_PATTERN: str = r'(?<=[.!?])\s+|(?<=[,;:])\s+|(?<=ก็)\s+|(?<=น�
 
 GRADIO_THEME: str = "soft"
 
-VERSION: str = "2.2.0"
+VERSION: str = "2.2.1"
 
 ITINERARY_PHASES: List[str] = ["preparing", "going_there", "main_activity", "returning"]
 

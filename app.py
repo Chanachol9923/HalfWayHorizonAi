@@ -666,6 +666,19 @@ async def _run_telegram_bot() -> None:
                 platform="telegram", presence_context_data=(read_delay, presence_ctx),
             )
             buckets = _filter_buckets(TextSplitter.split(response))
+            roll = random.random()
+            if roll < 0.40:
+                target = 1
+            elif roll < 0.70:
+                target = 2
+            elif roll < 0.90:
+                target = 3
+            elif roll < 0.95:
+                target = 4
+            else:
+                target = 5
+            if len(buckets) > target:
+                buckets = buckets[:max(1, target-1)] + [' '.join(buckets[max(1, target-1):])]
             for i, b in enumerate(buckets):
                 if b.strip():
                     delay = PresenceManager.calculate_typing_delay(b, dna)
@@ -673,7 +686,7 @@ async def _run_telegram_bot() -> None:
                         await asyncio.sleep(min(delay, 4))
                     await _send(chat_id, b.strip())
                     if i < len(buckets) - 1:
-                        gap = max(0.3, min(len(b) * random.uniform(0.05, 0.2), 3.0))
+                        gap = max(0.3, min(len(b) * random.uniform(0.3, 0.6), 3.0))
                         await asyncio.sleep(gap)
         except Exception as e:
             logger.error(f"Telegram handle_text: {e}")
