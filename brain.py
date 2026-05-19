@@ -337,7 +337,10 @@ class MasterStateBuilder:
 
         user_tz = pytz.timezone(settings.get("timezone", config.DEFAULT_USER_TIMEZONE))
         char_tz_str = profile_char.get("timezone", config.AI_TIMEZONE) if profile_char else config.AI_TIMEZONE
-        ai_tz = pytz.timezone(char_tz_str)
+        try:
+            ai_tz = pytz.timezone(char_tz_str)
+        except Exception:
+            ai_tz = pytz.timezone(config.AI_TIMEZONE)
 
         ai_local = now.astimezone(ai_tz)
         user_local = now.astimezone(user_tz)
@@ -1077,10 +1080,14 @@ Return ONLY the message text."""
         try:
             raw = await self.typhoon.generate(
                 messages=[{"role": "system", "content": prompt}],
-                temperature=0.8,
+                temperature=0.85,
                 max_tokens=128,
             )
-            return self.chat_engine._clean_response(raw)
+            clean = self.chat_engine._clean_response(raw)
+            sentences = re.split(r'(?<=[.!?])\s+', clean)
+            if len(sentences) > 6:
+                clean = ' '.join(sentences[:6])
+            return clean
         except Exception as e:
             logger.warning(f"Jealousy test gen failed: {e}")
             return None

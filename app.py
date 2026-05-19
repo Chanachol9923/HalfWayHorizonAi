@@ -767,6 +767,11 @@ async def _run_telegram_bot() -> None:
             await database.update_character_profile(char_id, {"city": val})
             await _send(chat_id, f"✅ City changed to **{val}**")
         elif cmd == "timezone":
+            try:
+                pytz.timezone(val)
+            except Exception:
+                await _send(chat_id, f"❌ Invalid timezone. Use e.g. Asia/Bangkok, America/New_York, Europe/London")
+                return
             await database.update_character_profile(char_id, {"timezone": val})
             await _send(chat_id, f"✅ Timezone changed to **{val}**")
 
