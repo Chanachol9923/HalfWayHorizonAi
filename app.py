@@ -686,7 +686,8 @@ async def _run_telegram_bot() -> None:
             f"/info — View character info\n/mood happy|sad|angry|anxious — Change mood\n"
             f"/stage Stranger|Friend|Crush|Dating|Lover — Change relationship stage\n"
             f"/name <new name> — Change character name\n/country <country> — Set country\n"
-            f"/city <city> — Set city\n/lore — View lore\n/lore_set <text> — Set lore")
+            f"/city <city> — Set city\n/lore — View lore\n/lore_set <text> — Set lore\n"
+            f"/version — Check bot version")
 
     async def handle_info(uid: int, chat_id: int) -> None:
         user_id = f"telegram_{uid}"
@@ -753,11 +754,16 @@ async def _run_telegram_bot() -> None:
             await database.update_character_profile(char_id, {"lore": text})
             await _send(chat_id, f"✅ Lore saved! ({len(text)} chars)")
 
+    async def handle_version(uid: int, chat_id: int) -> None:
+        await _send(chat_id, f"🤖 HalfWay Horizon AI Engine\nVersion: {config.VERSION}\nModel: {config.TYPHOON_MODEL_CHAT}")
+
     async def _dispatch(uid: int, chat_id: int, text: str) -> None:
         if text == "/start":
             asyncio.ensure_future(handle_start(uid, chat_id))
         elif text == "/info":
             asyncio.ensure_future(handle_info(uid, chat_id))
+        elif text == "/version":
+            asyncio.ensure_future(handle_version(uid, chat_id))
         elif text == "/lore":
             asyncio.ensure_future(handle_lore(uid, chat_id))
         elif text.startswith("/lore_set "):

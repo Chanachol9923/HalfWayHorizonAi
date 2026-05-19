@@ -167,6 +167,8 @@ TEXT_SPLIT_PATTERN: str = r'(?<=[.!?])\s+|(?<=[,;:])\s+|(?<=ก็)\s+|(?<=น�
 
 GRADIO_THEME: str = "soft"
 
+VERSION: str = "2.0.0"
+
 ITINERARY_PHASES: List[str] = ["preparing", "going_there", "main_activity", "returning"]
 
 USER_INTENTS: Dict[str, List[str]] = {
