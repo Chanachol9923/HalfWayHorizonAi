@@ -852,9 +852,8 @@ async def _run_telegram_bot() -> None:
         ]
         await _send(chat_id, "\n".join(lines))
 
-    async def handle_traits_set(uid: int, chat_id: int, text: str) -> None:
-        user_id = f"telegram_{uid}"
-        char_id = await _get_or_create_char(uid)
+    def _parse_trait_text(text: str) -> Dict[str, float]:
+        """Parse natural language or key=value into trait adjustments."""
         mapping = {
             "talkative": "communication_style",
             "playful": "playfulness",
@@ -863,28 +862,82 @@ async def _run_telegram_bot() -> None:
             "needy": "needy_multiplier",
             "frequency": "proactive_texting_frequency",
         }
-        dna = await database.get_personality_dna(user_id, char_id)
-        parts = text.split()
-        updated = []
-        for part in parts:
-            if "=" not in part:
-                continue
-            key, val = part.split("=", 1)
-            key = key.strip().lower()
-            db_key = mapping.get(key)
-            if not db_key:
-                continue
-            try:
-                v = float(val.strip())
-                if v < 0.0 or v > 1.0:
+        result = {}
+        if "=" in text:
+            for part in text.split():
+                if "=" not in part:
                     continue
-            except ValueError:
-                continue
-            dna[db_key] = v
-            updated.append(f"{key}={v}")
-        if not updated:
-            await _send(chat_id, "❌ Format: /traits_set talkative=0.8 playful=0.5")
+                key, val = part.split("=", 1)
+                k = key.strip().lower()
+                db_key = mapping.get(k)
+                if not db_key:
+                    continue
+                try:
+                    v = float(val.strip())
+                    if 0.0 <= v <= 1.0:
+                        result[db_key] = v
+                except ValueError:
+                    pass
+            return result
+
+        tl = text.lower()
+        keyword_map = {
+            "communication_style": (["talkative", "chatty", "verbose"], ["shy", "quiet", "brief", "silent"]),
+            "playfulness": (["playful", "funny", "teasing", "joke"], ["serious", "calm", "mature", "stoic"]),
+            "social_butterfly": (["outgoing", "social", "extrovert", "party"], ["reserved", "introvert", "loner", "homebody"]),
+            "anxiety_and_insecurity": (["anxious", "insecure", "nervous", "worried"], ["confident", "chill", "relaxed", "bold"]),
+            "needy_multiplier": (["needy", "clingy", "attached", "dependent"], ["independent", "aloof", "distant", "detached"]),
+            "proactive_texting_frequency": (["frequent", "often", "always text"], ["rare", "never text", "seldom"]),
+        }
+        for key, (high, low) in keyword_map.items():
+            score = None
+            for w in high:
+                if w in tl:
+                    if any(n in tl for n in ["not", "no", "less", "un-", "don't"]):
+                        score = round(random.uniform(0.1, 0.3), 1)
+                    elif any(m in tl for m in ["very", "extremely", "super", "really", "too"]):
+                        score = round(random.uniform(0.8, 1.0), 1)
+                    elif any(m in tl for m in ["a bit", "slightly", "kinda", "somewhat"]):
+                        score = round(random.uniform(0.5, 0.7), 1)
+                    else:
+                        score = round(random.uniform(0.6, 0.8), 1)
+                    break
+            if score is None:
+                for w in low:
+                    if w in tl:
+                        if any(n in tl for n in ["not", "no", "less", "un-", "don't"]):
+                            score = round(random.uniform(0.6, 0.8), 1)
+                        elif any(m in tl for m in ["very", "extremely", "super", "really"]):
+                            score = round(random.uniform(0.0, 0.2), 1)
+                        elif any(m in tl for m in ["a bit", "slightly", "kinda"]):
+                            score = round(random.uniform(0.3, 0.5), 1)
+                        else:
+                            score = round(random.uniform(0.1, 0.3), 1)
+                        break
+            if score is not None:
+                result[key] = score
+        return result
+
+    async def handle_traits_set(uid: int, chat_id: int, text: str) -> None:
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        dna = await database.get_personality_dna(user_id, char_id)
+        updates = _parse_trait_text(text)
+        if not updates:
+            await _send(chat_id, "❌ ไม่เข้าใจ ลอง: /traits_set talkative=0.8 playful=0.5")
             return
+        rev = {v: k for k, v in {
+            "talkative": "communication_style",
+            "playful": "playfulness",
+            "social": "social_butterfly",
+            "anxious": "anxiety_and_insecurity",
+            "needy": "needy_multiplier",
+            "frequency": "proactive_texting_frequency",
+        }.items()}
+        updated = []
+        for db_key, val in updates.items():
+            dna[db_key] = val
+            updated.append(f"{rev.get(db_key, db_key)}={val}")
         await database.upsert_personality_dna(user_id, dna, char_id)
         await _send(chat_id, f"✅ Set: {', '.join(updated)}")
 
