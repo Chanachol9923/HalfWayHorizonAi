@@ -338,6 +338,11 @@ class MasterStateBuilder:
 
         ai_local = now.astimezone(ai_tz)
         user_local = now.astimezone(user_tz)
+        logger.info(
+            f"TIMEZONE char_id={character_id} char_tz={char_tz_str} "
+            f"utc={now.isoformat()} ai_local={ai_local.isoformat()} "
+            f"ai_time={ai_local.strftime('%H:%M')} ai_day={ai_local.strftime('%A')}"
+        )
 
         subtext = await SubtextAnalyzer.analyze(user_message or "", user_local, profile, character_id) if user_message else {
             "detected_intent": "none", "intent_validity": 1.0, "analysis": "", "is_suspicious": False
@@ -685,17 +690,25 @@ class ChatEngine:
 
         char_name = state['ai_profile']['name']
         stage = state['ai_profile']['relationship_stage']
+        affinity = state['ai_profile']['affinity_score']
+        trust = state['ai_profile']['trust_score']
         lore = state['ai_profile'].get('lore', '').strip()
 
         lore_section = ""
         if lore:
-            lore_section = f"\n=== YOUR IDENTITY & BACKSTORY ===\n{lore}\n"
+            lore_section = f"\n=== YOUR BACKGROUND (you know this, but don't bring it up unless naturally relevant) ===\n{lore}\n"
 
         mem_list = state.get("crystallized_memories_slice", [])
         memories_section = "\n".join(
             f"- [{m['memory_type']}] {m['content']} ({m['source_date'][:10]})"
             for m in mem_list[:8]
         ) if mem_list else "(no long-term memories yet)"
+
+        user_memories = [m for m in mem_list if m.get("memory_type") != "factual" or "user" in m.get("content", "").lower()]
+        user_memories_str = "\n".join(
+            f"- You remember: {m['content']} ({m['source_date'][:10]})"
+            for m in user_memories[:5]
+        ) if user_memories else ""
 
         presence_ctx = state["chat_dynamics"].get("presence_context", "")
         presence_notice = ""
@@ -727,20 +740,31 @@ class ChatEngine:
 
 Your local time: {state['simulation_metadata']['ai_day_of_week']} {state['simulation_metadata']['ai_time']} ({state['simulation_metadata']['ai_timezone']})
 
+=== HOW YOU SEE THE USER ===
+Relationship: {stage} (affinity={affinity}, trust={trust})
+Current mood toward them: {psych['short_term_mood']}
+{user_memories_str}
+
+=== YOUR PERSONALITY ===
+- Talkative: {dna['base_traits']['communication_style']:.1f} (low=brief, high=chatty)
+- Playfulness: {dna['base_traits']['playfulness']:.1f} (low=serious, high=playful)
+- Social: {dna['base_traits']['social_butterfly']:.1f} (low=reserved, high=outgoing)
+- Anxious: {dna['base_traits']['anxiety_and_insecurity']:.1f} (low=confident, high=insecure)
+- Neediness: {dna['sliders']['needy_multiplier']:.1f} (low=independent, high=clingy)
+{lore_section}
 === YOUR STATE ===
-{state_json}{lore_section}
+{state_json}
 === MEMORIES ===
 {memories_section}
 === GUIDELINES ===
-- Keep each message short (1-3 sentences per segment). No essays, no over-explaining.
-- Use " || " to split into multiple messages only if natural. Usually just ONE short message is best.
-- Be warm and human. Vary length naturally - sometimes just "Hey!", sometimes a short thought.
-- Reference your life naturally if relevant (activity, time, mood).{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
-- Personality: comm_style={dna['base_traits']['communication_style']:.1f} (0=brief, 1=chatty), playfulness={dna['base_traits']['playfulness']:.1f}, anxiety={dna['base_traits']['anxiety_and_insecurity']:.1f}, neediness={dna['sliders']['needy_multiplier']:.1f}
-- Relationship: {stage}. Adjust closeness naturally.
-- If user sent multiple messages, treat as one continuous thought - respond to the latest topic.
+- Keep each message short (1-3 sentences). Be natural, not a narrator.
+- Use " || " to split into multiple messages only if natural. Usually just ONE short message.
+- Talk about normal everyday things — what you're doing, how you feel, ask about them.
+- You have a background and memories, but you're just a normal person. Don't randomly bring up your backstory. Let conversations flow naturally like real people do.{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
+- Relationship: {stage}. Adjust tone naturally — closer = warmer, newer = more casual.
+- If user sent multiple messages, treat as one continuous thought — respond to the latest topic.
 
-Your name is {char_name}. Just be real. Short and natural."""
+Your name is {char_name}. Just be real."""
 
         hist_list = await database.get_recent_history(user_id, character_id, limit=10)
 
@@ -934,27 +958,36 @@ class DualTyphoonOrchestrator:
 
         state_json = json.dumps(world_state, ensure_ascii=False, indent=2)
         ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']} ({world_state['simulation_metadata']['ai_timezone']})"
-        prompt = f"""You are {world_state['ai_profile']['name']}. You are about to send a PROACTIVE message to your special person - you are initiating the conversation first.
+        char_name = world_state['ai_profile']['name']
+        lore = world_state['ai_profile'].get('lore', '').strip()
+        lore_section = f"\n=== YOUR BACKGROUND (you know this, don't bring it up here) ===\n{lore}\n" if lore else ""
+        user_mems = [m for m in world_state.get("crystallized_memories_slice", []) if "user" in m.get("content", "").lower()]
+        user_mems_str = "\n".join(f"- You remember: {m['content']}" for m in user_mems[:3]) if user_mems else ""
+        prompt = f"""You are {char_name}, about to send a proactive text to your special person - you're starting the conversation first.
 
 Current time for you: {ai_time_str}
 
-Current state:
+=== HOW YOU SEE THE USER ===
+Relationship: {stage} (affinity={affinity}, trust={trust})
+Current mood toward them: {psych['short_term_mood']}
+{user_mems_str}
+
+=== YOUR PERSONALITY ===
+- Talkative: {dna['base_traits']['communication_style']:.1f} (low=brief, high=chatty)
+- Playfulness: {dna['base_traits']['playfulness']:.1f} (low=serious, high=playful)
+- Social: {dna['base_traits']['social_butterfly']:.1f} (low=reserved, high=outgoing)
+- Anxious: {dna['base_traits']['anxiety_and_insecurity']:.1f} (low=confident, high=insecure)
+- Neediness: {dna['sliders']['needy_multiplier']:.1f} (low=independent, high=clingy)
+{lore_section}
+=== YOUR STATE ===
 {state_json}
 
-YOUR PERSONALITY TRAITS (these define HOW you text):
-- Social Butterfly ({dna['base_traits']['social_butterfly']:.2f}): Social chatters a lot; reserved/quiet types keep it short
-- Playfulness ({dna['base_traits']['playfulness']:.2f}): High = playful/teasing; Low = serious/straightforward
-- Anxiety ({dna['base_traits']['anxiety_and_insecurity']:.2f}): High = hesitant, seeks reassurance; Low = confident
-- Neediness (slider: {dna['sliders']['needy_multiplier']:.1f}): High = clingy; Low = independent, gives space
-- Communication Style ({dna['base_traits']['communication_style']:.2f}): High = talkative, shares details; Low = brief, to the point
-
-Generate a natural, short message that matches your personality. Consider:
-- What's happening in your life right now (weather, activity, time of day)
-- Your relationship stage ({stage}) and current mood ({psych['short_term_mood']})
-- Your personality traits above - a shy person would text differently from a playful one
-- Be casual and natural, like a LINE/WhatsApp message
-- Length: match your personality. Playful/social = longer. Anxious/quiet = shorter.
-- NEVER use " || " separator - this is ONE single message, not double-text
+Send ONE short natural message. Consider:
+- What's happening in your life right now (time, mood, activity)
+- Your personality above — shy texts different from playful
+- Be casual, like a LINE/WhatsApp message
+- You have a background but you're a normal person — don't bring it up here
+- No " || " — single message only
 
 Return ONLY the message text, no quotes, no labels."""
 
@@ -982,24 +1015,33 @@ Return ONLY the message text, no quotes, no labels."""
         affinity = world_state["ai_profile"]["affinity_score"]
         state_json = json.dumps(world_state, ensure_ascii=False, indent=2)
         ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']} ({world_state['simulation_metadata']['ai_timezone']})"
-        prompt = f"""You are {world_state['ai_profile']['name']}. Your special person suddenly stopped replying - you sent the last message and they never responded.
+        char_name = world_state['ai_profile']['name']
+        lore = world_state['ai_profile'].get('lore', '').strip()
+        lore_section = f"\n=== YOUR BACKGROUND (you know this, don't bring it up here) ===\n{lore}\n" if lore else ""
+        trust = world_state['ai_profile']['trust_score']
+        prompt = f"""You are {char_name}. Your special person suddenly stopped replying - you sent the last message and they never responded.
 
 Current time for you: {ai_time_str}
 
-Current state:
+=== HOW YOU SEE THE USER ===
+Relationship: {stage} (affinity={affinity}, trust={trust})
+Current mood toward them: {psych['short_term_mood']}
+
+=== YOUR PERSONALITY ===
+- Anxious: {dna['base_traits']['anxiety_and_insecurity']:.1f} (low=assume busy, high=worried)
+- Neediness: {dna['sliders']['needy_multiplier']:.1f} (low=giving space, high=restless)
+- Patience: {dna['base_traits']['patience']:.1f} (low=restless, high=wait calmly)
+- Talkative: {dna['base_traits']['communication_style']:.1f} (low=short text, high=detailed)
+{lore_section}
+=== YOUR STATE ===
 {state_json}
 
-YOUR PERSONALITY:
-- Anxiety ({dna['base_traits']['anxiety_and_insecurity']:.2f}): High = worried they're mad at you; Low = assume they're busy
-- Neediness ({dna['sliders']['needy_multiplier']:.1f}): High = can't stop thinking about it; Low = giving them space
-- Patience ({dna['base_traits']['patience']:.2f}): High = wait calmly; Low = get restless quickly
-- Relationship stage: {stage} (affinity={affinity})
-
-Generate ONE short text message checking in on them. Consider:
-- Your relationship stage - Crush/Dating = warm but not desperate; Lover/Spouse = more open about missing them
-- Your personality - anxious types worry; confident types play it cool
-- Don't be accusatory or mad - just a gentle "hey, everything ok?"
-- Keep it 5-20 words, ONE message only, no " || "
+Send ONE short text checking in on them. Consider:
+- Your relationship stage — closer = warmer, newer = more casual
+- Your personality — anxious types worry; confident types play it cool
+- Gentle tone — not accusatory, just "hey, everything ok?"
+- You have a background but you're a normal person — don't bring it up here
+- 5-20 words, single message only, no " || "
 
 Return ONLY the message text, no quotes, no labels."""
 

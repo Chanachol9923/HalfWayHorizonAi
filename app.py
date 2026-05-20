@@ -708,7 +708,7 @@ async def _run_telegram_bot() -> None:
             f"/info — View character info\n/mood happy|sad|angry|anxious — Change mood\n"
             f"/stage Stranger|Friend|Crush|Dating|Lover — Change relationship stage\n"
             f"/name <new name> — Change character name\n/country <country> — Set country\n"
-            f"/city <city> — Set city\n/timezone <timezone> — Set timezone (e.g. Asia/Tokyo)\n"
+            f"/city <city> — Set city\n/timezone <timezone> — Set timezone (e.g. Asia/Tokyo)\n/traits — View personality traits\n/traits_set talkative=0.8... — Bulk set traits\n/affinity <0-100> — How much they like you\n/trust <0-100> — How much they trust you\n/remember <text> — Add a memory about you\n"
             f"/lore — View lore\n/lore_set <text> — Set lore\n"
             f"/version — Check bot version")
 
@@ -775,6 +775,55 @@ async def _run_telegram_bot() -> None:
                 return
             await database.update_character_profile(char_id, {"timezone": val})
             await _send(chat_id, f"✅ Timezone changed to **{val}**")
+        elif cmd == "affinity":
+            try:
+                val_f = float(val)
+                if val_f < 0 or val_f > 100:
+                    raise ValueError
+            except ValueError:
+                await _send(chat_id, f"❌ Value must be 0-100")
+                return
+            psych = await database.get_psychological_state(user_id, char_id)
+            psych["affinity_score"] = val_f
+            await database.upsert_psychological_state(user_id, psych, char_id)
+            await _send(chat_id, f"✅ Affinity set to **{val_f}**")
+        elif cmd == "trust":
+            try:
+                val_f = float(val)
+                if val_f < 0 or val_f > 100:
+                    raise ValueError
+            except ValueError:
+                await _send(chat_id, f"❌ Value must be 0-100")
+                return
+            psych = await database.get_psychological_state(user_id, char_id)
+            psych["trust_score"] = val_f
+            await database.upsert_psychological_state(user_id, psych, char_id)
+            await _send(chat_id, f"✅ Trust set to **{val_f}**")
+        elif cmd.startswith("trait_"):
+            trait_name = cmd[6:]
+            mapping = {
+                "talkative": "communication_style",
+                "playful": "playfulness",
+                "social": "social_butterfly",
+                "anxious": "anxiety_and_insecurity",
+                "needy": "needy_multiplier",
+                "frequency": "proactive_texting_frequency",
+            }
+            db_key = mapping.get(trait_name)
+            if not db_key:
+                await _send(chat_id, f"❌ Unknown trait. Choose: {', '.join(mapping.keys())}")
+                return
+            try:
+                val_f = float(val)
+                if val_f < 0.0 or val_f > 1.0:
+                    raise ValueError
+            except ValueError:
+                await _send(chat_id, f"❌ Value must be a number between 0.0 and 1.0")
+                return
+            dna = await database.get_personality_dna(user_id, char_id)
+            dna[db_key] = val_f
+            await database.upsert_personality_dna(user_id, dna, char_id)
+            await _send(chat_id, f"✅ Trait **{trait_name}** set to **{val_f}**")
 
     async def handle_lore(uid: int, chat_id: int, text: str = "") -> None:
         char_id = await _get_or_create_char(uid)
@@ -784,6 +833,72 @@ async def _run_telegram_bot() -> None:
         else:
             await database.update_character_profile(char_id, {"lore": text})
             await _send(chat_id, f"✅ Lore saved! ({len(text)} chars)")
+
+    async def handle_traits(uid: int, chat_id: int) -> None:
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        dna = await database.get_personality_dna(user_id, char_id)
+        lines = [
+            "🎭 **Personality Traits:**",
+            f"🗣 Talkative: {dna['communication_style']:.1f}",
+            f"🎮 Playful: {dna['playfulness']:.1f}",
+            f"👥 Social: {dna['social_butterfly']:.1f}",
+            f"😰 Anxious: {dna['anxiety_and_insecurity']:.1f}",
+            f"🤗 Needy: {dna['needy_multiplier']:.1f}",
+            f"📨 Frequency: {dna['proactive_texting_frequency']:.1f}",
+            "",
+            "/traits_set talkative=0.8 playful=0.5 social=0.6 anxious=0.2 needy=0.3",
+            "Or /trait_<name> <value> for one at a time",
+        ]
+        await _send(chat_id, "\n".join(lines))
+
+    async def handle_traits_set(uid: int, chat_id: int, text: str) -> None:
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        mapping = {
+            "talkative": "communication_style",
+            "playful": "playfulness",
+            "social": "social_butterfly",
+            "anxious": "anxiety_and_insecurity",
+            "needy": "needy_multiplier",
+            "frequency": "proactive_texting_frequency",
+        }
+        dna = await database.get_personality_dna(user_id, char_id)
+        parts = text.split()
+        updated = []
+        for part in parts:
+            if "=" not in part:
+                continue
+            key, val = part.split("=", 1)
+            key = key.strip().lower()
+            db_key = mapping.get(key)
+            if not db_key:
+                continue
+            try:
+                v = float(val.strip())
+                if v < 0.0 or v > 1.0:
+                    continue
+            except ValueError:
+                continue
+            dna[db_key] = v
+            updated.append(f"{key}={v}")
+        if not updated:
+            await _send(chat_id, "❌ Format: /traits_set talkative=0.8 playful=0.5")
+            return
+        await database.upsert_personality_dna(user_id, dna, char_id)
+        await _send(chat_id, f"✅ Set: {', '.join(updated)}")
+
+    async def handle_remember(uid: int, chat_id: int, text: str) -> None:
+        user_id = f"telegram_{uid}"
+        char_id = await _get_or_create_char(uid)
+        if not text:
+            await _send(chat_id, "📝 Usage: /remember <something about you>")
+            return
+        await database.save_crystallized_memory(
+            memory_type="emotional", content=text,
+            importance=0.8, user_id=user_id, character_id=char_id,
+        )
+        await _send(chat_id, f"✅ I'll remember: {text}")
 
     async def handle_version(uid: int, chat_id: int) -> None:
         await _send(chat_id, f"🤖 HalfWay Horizon AI Engine\nVersion: {config.VERSION}\nModel: {config.TYPHOON_MODEL_CHAT}")
@@ -795,6 +910,16 @@ async def _run_telegram_bot() -> None:
             asyncio.ensure_future(handle_info(uid, chat_id))
         elif text == "/version":
             asyncio.ensure_future(handle_version(uid, chat_id))
+        elif text == "/traits":
+            asyncio.ensure_future(handle_traits(uid, chat_id))
+        elif text.startswith("/affinity "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "affinity", text[10:]))
+        elif text.startswith("/trust "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trust", text[7:]))
+        elif text.startswith("/remember "):
+            asyncio.ensure_future(handle_remember(uid, chat_id, text[10:]))
+        elif text.startswith("/traits_set "):
+            asyncio.ensure_future(handle_traits_set(uid, chat_id, text[12:]))
         elif text == "/lore":
             asyncio.ensure_future(handle_lore(uid, chat_id))
         elif text.startswith("/lore_set "):
@@ -811,6 +936,18 @@ async def _run_telegram_bot() -> None:
             asyncio.ensure_future(handle_set(uid, chat_id, "city", text[6:]))
         elif text.startswith("/timezone "):
             asyncio.ensure_future(handle_set(uid, chat_id, "timezone", text[10:]))
+        elif text.startswith("/trait_talkative "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trait_talkative", text[17:]))
+        elif text.startswith("/trait_playful "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trait_playful", text[15:]))
+        elif text.startswith("/trait_social "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trait_social", text[14:]))
+        elif text.startswith("/trait_anxious "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trait_anxious", text[15:]))
+        elif text.startswith("/trait_needy "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trait_needy", text[13:]))
+        elif text.startswith("/trait_frequency "):
+            asyncio.ensure_future(handle_set(uid, chat_id, "trait_frequency", text[17:]))
         else:
             asyncio.ensure_future(handle_text(uid, chat_id, text))
 
