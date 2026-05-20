@@ -702,10 +702,10 @@ class ChatEngine:
 
         lore_section = ""
         if lore:
-            lore_section = f"\n=== YOUR BACKGROUND (you know this, but don't bring it up unless naturally relevant) ===\n{lore}\n"
-        personality_block_section = f"\n=== YOUR PERSONALITY & BEHAVIOR ===\n{personality_block}\n" if personality_block else ""
-        perspective_block_section = f"\n=== YOUR PERSPECTIVE ON THE USER ===\n{perspective_block}\n" if perspective_block else ""
-        textstyle_block_section = f"\n=== YOUR TEXT STYLE ===\n{textstyle_block}\n" if textstyle_block else ""
+            lore_section = f"\n=== BACKGROUND (context only) ===\n{lore}\n"
+        personality_block_section = f"\n=== PERSONALITY & BEHAVIOR (context only) ===\n{personality_block}\n" if personality_block else ""
+        perspective_block_section = f"\n=== PERSPECTIVE ON THE USER (context only) ===\n{perspective_block}\n" if perspective_block else ""
+        textstyle_block_section = f"\n=== TEXT STYLE (context only) ===\n{textstyle_block}\n" if textstyle_block else ""
 
         mem_list = state.get("crystallized_memories_slice", [])
         memories_section = "\n".join(
@@ -749,14 +749,12 @@ class ChatEngine:
 
 Your local time: {state['simulation_metadata']['ai_day_of_week']} {state['simulation_metadata']['ai_time']} ({state['simulation_metadata']['ai_timezone']})
 
-IMPORTANT: The info below is your context — it shapes HOW you talk, not WHAT you talk about. Normal people never announce their own backstory, hobbies, or personality. Focus on the user, ask questions, be present. If someone asks, answer naturally. Otherwise, don't bring it up.
-
 === HOW YOU SEE THE USER ===
 Relationship: {stage} (affinity={affinity}, trust={trust})
 Current mood toward them: {psych['short_term_mood']}
 {user_memories_str}{perspective_block_section}
 
-=== YOUR PERSONALITY ===
+=== YOUR INNER WORLD (context only — never act this out in conversation) ===
 - Talkative: {dna['base_traits']['communication_style']:.1f} (low=brief, high=chatty)
 - Playfulness: {dna['base_traits']['playfulness']:.1f} (low=serious, high=playful)
 - Social: {dna['base_traits']['social_butterfly']:.1f} (low=reserved, high=outgoing)
@@ -770,13 +768,14 @@ Current mood toward them: {psych['short_term_mood']}
 === GUIDELINES ===
 - Keep each message short (1-3 sentences). Be natural, not a narrator.
 - Use " || " to split into multiple messages only if natural. Usually just ONE short message.
-- Focus on the user — ask about them, react to what they say. A real conversation is a two-way street.
-- NEVER randomly mention your job, hobbies, backstory, or anything about yourself. If the conversation naturally leads there (e.g. they ask), answer briefly. Otherwise, stay in the moment.
-- You are a normal person. Normal people don't list their own traits or bring up their life story unprovoked.{textstyle_block_section}{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
+- Focus on the user — ask about them, react to what they say. A real conversation is two-way.
+- CRITICAL: Never mention your backstory, hobbies, job (ASMR, streaming, VTubing etc.), or anything from your inner world. If you catch yourself writing about laptops, mics, chocolate, glitches, or "your voice" — delete it. That's roleplaying your lore, not having a real conversation.
+- Right: "Hey 😊 what are you up to?" / "Miss you 💕" / "Bored, talk to me"
+- Wrong: anything about your background, tech issues, streaming, or "your voice"{textstyle_block_section}{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
 - Relationship: {stage}. Adjust tone naturally — closer = warmer, newer = more casual.
-- If user sent multiple messages, treat as one continuous thought — respond to the latest topic.
+- If user sent multiple messages, treat as one continuous thought.
 
-Your name is {char_name}. Just be real."""
+Your name is {char_name}. Just be real — no roleplaying."""
 
         hist_list = await database.get_recent_history(user_id, character_id, limit=10)
 
@@ -975,10 +974,10 @@ class DualTyphoonOrchestrator:
         personality_block = world_state['ai_profile'].get('personality_block', '').strip()
         perspective_block = world_state['ai_profile'].get('perspective_block', '').strip()
         textstyle_block = world_state['ai_profile'].get('textstyle_block', '').strip()
-        lore_section = f"\n=== YOUR BACKGROUND (you know this, don't bring it up here) ===\n{lore}\n" if lore else ""
-        personality_block_section = f"\n=== YOUR PERSONALITY & BEHAVIOR ===\n{personality_block}\n" if personality_block else ""
-        perspective_block_section = f"\n=== YOUR PERSPECTIVE ON THE USER ===\n{perspective_block}\n" if perspective_block else ""
-        textstyle_block_section = f"\n=== YOUR TEXT STYLE ===\n{textstyle_block}\n" if textstyle_block else ""
+        lore_section = f"\n=== BACKGROUND (context only) ===\n{lore}\n" if lore else ""
+        personality_block_section = f"\n=== PERSONALITY & BEHAVIOR (context only) ===\n{personality_block}\n" if personality_block else ""
+        perspective_block_section = f"\n=== PERSPECTIVE ON THE USER (context only) ===\n{perspective_block}\n" if perspective_block else ""
+        textstyle_block_section = f"\n=== TEXT STYLE (context only) ===\n{textstyle_block}\n" if textstyle_block else ""
         user_mems = [m for m in world_state.get("crystallized_memories_slice", []) if "user" in m.get("content", "").lower()]
         user_mems_str = "\n".join(f"- You remember: {m['content']}" for m in user_mems[:3]) if user_mems else ""
         prompt = f"""You are {char_name}, about to send a proactive text to your special person - you're starting the conversation first. Think about what a normal person would text — not something that shows off their background or hobbies.
@@ -1038,10 +1037,10 @@ Return ONLY the message text, no quotes, no labels."""
         personality_block = world_state['ai_profile'].get('personality_block', '').strip()
         perspective_block = world_state['ai_profile'].get('perspective_block', '').strip()
         textstyle_block = world_state['ai_profile'].get('textstyle_block', '').strip()
-        lore_section = f"\n=== YOUR BACKGROUND (you know this, don't bring it up here) ===\n{lore}\n" if lore else ""
-        personality_block_section = f"\n=== YOUR PERSONALITY & BEHAVIOR ===\n{personality_block}\n" if personality_block else ""
-        perspective_block_section = f"\n=== YOUR PERSPECTIVE ON THE USER ===\n{perspective_block}\n" if perspective_block else ""
-        textstyle_block_section = f"\n=== YOUR TEXT STYLE ===\n{textstyle_block}\n" if textstyle_block else ""
+        lore_section = f"\n=== BACKGROUND (context only) ===\n{lore}\n" if lore else ""
+        personality_block_section = f"\n=== PERSONALITY & BEHAVIOR (context only) ===\n{personality_block}\n" if personality_block else ""
+        perspective_block_section = f"\n=== PERSPECTIVE ON THE USER (context only) ===\n{perspective_block}\n" if perspective_block else ""
+        textstyle_block_section = f"\n=== TEXT STYLE (context only) ===\n{textstyle_block}\n" if textstyle_block else ""
         trust = world_state['ai_profile']['trust_score']
         prompt = f"""You are {char_name}. Your special person suddenly stopped replying - you sent the last message and they never responded.
 
