@@ -710,6 +710,9 @@ async def _run_telegram_bot() -> None:
             f"/name <new name> — Change character name\n/country <country> — Set country\n"
             f"/city <city> — Set city\n/timezone <timezone> — Set timezone (e.g. Asia/Tokyo)\n/traits — View personality traits\n/traits_set talkative=0.8... — Bulk set traits\n/affinity <0-100> — How much they like you\n/trust <0-100> — How much they trust you\n/remember <text> — Add a memory about you\n"
             f"/lore — View lore\n/lore_set <text> — Set lore\n"
+            f"/personality — View personality\n/personality_set <text> — Set personality\n"
+            f"/perspective — View perspective\n/perspective_set <text> — Set perspective\n"
+            f"/textstyle — View text style\n/textstyle_set <text> — Set text style\n"
             f"/version — Check bot version")
 
     async def handle_info(uid: int, chat_id: int) -> None:
@@ -736,6 +739,9 @@ async def _run_telegram_bot() -> None:
             f"  Patience: {dna.get('patience', 0.5):.2f}",
             f"  Playfulness: {dna.get('playfulness', 0.5):.2f}",
             "", f"💬 Lore: {char.get('lore', '(none)')[:200]}",
+            "", f"🎭 Personality: {char.get('personality', '(none)')[:200]}",
+            "", f"💕 Perspective: {char.get('perspective', '(none)')[:200]}",
+            "", f"📝 Text Style: {char.get('textstyle', '(none)')[:200]}",
         ]
         await _send(chat_id, "\n".join(lines))
 
@@ -833,6 +839,22 @@ async def _run_telegram_bot() -> None:
         else:
             await database.update_character_profile(char_id, {"lore": text})
             await _send(chat_id, f"✅ Lore saved! ({len(text)} chars)")
+
+    async def handle_section(uid: int, chat_id: int, section: str, text: str = "") -> None:
+        char_id = await _get_or_create_char(uid)
+        char = await database.get_character_profile(char_id)
+        labels = {
+            "personality": ("🎭", "Personality"),
+            "perspective": ("💕", "Perspective"),
+            "textstyle": ("📝", "Text Style"),
+        }
+        icon, label = labels.get(section, ("📄", section.capitalize()))
+        if not text:
+            val = char.get(section, "")
+            await _send(chat_id, f"{icon} Current {label}:\n\n{val if val else '(none)'}")
+        else:
+            await database.update_character_profile(char_id, {section: text})
+            await _send(chat_id, f"✅ {label} saved! ({len(text)} chars)")
 
     async def handle_traits(uid: int, chat_id: int) -> None:
         user_id = f"telegram_{uid}"
@@ -977,6 +999,18 @@ async def _run_telegram_bot() -> None:
             asyncio.ensure_future(handle_lore(uid, chat_id))
         elif text.startswith("/lore_set "):
             asyncio.ensure_future(handle_lore(uid, chat_id, text[10:]))
+        elif text == "/personality":
+            asyncio.ensure_future(handle_section(uid, chat_id, "personality"))
+        elif text.startswith("/personality_set "):
+            asyncio.ensure_future(handle_section(uid, chat_id, "personality", text[17:]))
+        elif text == "/perspective":
+            asyncio.ensure_future(handle_section(uid, chat_id, "perspective"))
+        elif text.startswith("/perspective_set "):
+            asyncio.ensure_future(handle_section(uid, chat_id, "perspective", text[17:]))
+        elif text == "/textstyle":
+            asyncio.ensure_future(handle_section(uid, chat_id, "textstyle"))
+        elif text.startswith("/textstyle_set "):
+            asyncio.ensure_future(handle_section(uid, chat_id, "textstyle", text[15:]))
         elif text.startswith("/mood "):
             asyncio.ensure_future(handle_set(uid, chat_id, "mood", text[6:]))
         elif text.startswith("/stage "):

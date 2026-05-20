@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS character_profiles (
     timezone TEXT NOT NULL DEFAULT 'Asia/Bangkok',
     avatar_url TEXT DEFAULT NULL,
     lore TEXT DEFAULT '',
+    personality TEXT DEFAULT '',
+    perspective TEXT DEFAULT '',
+    textstyle TEXT DEFAULT '',
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -244,12 +247,13 @@ async def initialize_database() -> None:
 async def _migrate_schema() -> None:
     conn = await get_connection()
     async with _db_lock:
-        try:
-            await conn.execute("ALTER TABLE character_profiles ADD COLUMN lore TEXT DEFAULT ''")
-            await conn.commit()
-            logger.info("Migration: added lore column to character_profiles")
-        except Exception:
-            pass
+        for col in ["lore", "personality", "perspective", "textstyle"]:
+            try:
+                await conn.execute(f"ALTER TABLE character_profiles ADD COLUMN {col} TEXT DEFAULT ''")
+                await conn.commit()
+                logger.info(f"Migration: added {col} column to character_profiles")
+            except Exception:
+                pass
 
 
 async def save_message(
@@ -771,13 +775,16 @@ async def create_character_profile(
     city: str = "Bangkok",
     timezone: str = "Asia/Bangkok",
     lore: str = "",
+    personality: str = "",
+    perspective: str = "",
+    textstyle: str = "",
 ) -> str:
     character_id = str(uuid.uuid4())[:8]
     conn = await get_connection()
     async with _db_lock:
         await conn.execute(
-            "INSERT INTO character_profiles (character_id, user_id, name, gender, country, city, timezone, lore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (character_id, user_id, name, gender, country, city, timezone, lore),
+            "INSERT INTO character_profiles (character_id, user_id, name, gender, country, city, timezone, lore, personality, perspective, textstyle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (character_id, user_id, name, gender, country, city, timezone, lore, personality, perspective, textstyle),
         )
         await conn.commit()
     return character_id
@@ -804,6 +811,10 @@ async def get_character_profiles(user_id: Optional[str] = None) -> List[Dict[str
             "city": r["city"],
             "timezone": r["timezone"],
             "is_active": bool(r["is_active"]),
+            "lore": r["lore"] if "lore" in r.keys() else "",
+            "personality": r["personality"] if "personality" in r.keys() else "",
+            "perspective": r["perspective"] if "perspective" in r.keys() else "",
+            "textstyle": r["textstyle"] if "textstyle" in r.keys() else "",
         }
         for r in rows
     ]
@@ -827,12 +838,15 @@ async def get_character_profile(character_id: str) -> Optional[Dict[str, Any]]:
         "city": row["city"],
         "timezone": row["timezone"],
         "lore": row["lore"] if "lore" in row.keys() else "",
+        "personality": row["personality"] if "personality" in row.keys() else "",
+        "perspective": row["perspective"] if "perspective" in row.keys() else "",
+        "textstyle": row["textstyle"] if "textstyle" in row.keys() else "",
         "is_active": bool(row["is_active"]),
     }
 
 
 async def update_character_profile(character_id: str, updates: Dict[str, Any]) -> None:
-    allowed = {"name", "gender", "country", "city", "timezone", "avatar_url", "is_active", "lore"}
+    allowed = {"name", "gender", "country", "city", "timezone", "avatar_url", "is_active", "lore", "personality", "perspective", "textstyle"}
     to_set = {k: v for k, v in updates.items() if k in allowed}
     if not to_set:
         return

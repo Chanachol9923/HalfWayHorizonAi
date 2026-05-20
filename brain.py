@@ -381,6 +381,9 @@ class MasterStateBuilder:
                 "gender": char_gender,
                 "location": f"{char_city}, {char_country}",
                 "lore": profile_char.get("lore", "") if profile_char else "",
+                "personality_block": profile_char.get("personality", "") if profile_char else "",
+                "perspective_block": profile_char.get("perspective", "") if profile_char else "",
+                "textstyle_block": profile_char.get("textstyle", "") if profile_char else "",
                 "relationship_stage": psych.get("relationship_stage", "Stranger"),
                 "affinity_score": round(psych.get("affinity_score", 0), 1),
                 "trust_score": round(psych.get("trust_score", 100), 1),
@@ -693,10 +696,16 @@ class ChatEngine:
         affinity = state['ai_profile']['affinity_score']
         trust = state['ai_profile']['trust_score']
         lore = state['ai_profile'].get('lore', '').strip()
+        personality_block = state['ai_profile'].get('personality_block', '').strip()
+        perspective_block = state['ai_profile'].get('perspective_block', '').strip()
+        textstyle_block = state['ai_profile'].get('textstyle_block', '').strip()
 
         lore_section = ""
         if lore:
             lore_section = f"\n=== YOUR BACKGROUND (you know this, but don't bring it up unless naturally relevant) ===\n{lore}\n"
+        personality_block_section = f"\n=== YOUR PERSONALITY & BEHAVIOR ===\n{personality_block}\n" if personality_block else ""
+        perspective_block_section = f"\n=== YOUR PERSPECTIVE ON THE USER ===\n{perspective_block}\n" if perspective_block else ""
+        textstyle_block_section = f"\n=== YOUR TEXT STYLE ===\n{textstyle_block}\n" if textstyle_block else ""
 
         mem_list = state.get("crystallized_memories_slice", [])
         memories_section = "\n".join(
@@ -743,7 +752,7 @@ Your local time: {state['simulation_metadata']['ai_day_of_week']} {state['simula
 === HOW YOU SEE THE USER ===
 Relationship: {stage} (affinity={affinity}, trust={trust})
 Current mood toward them: {psych['short_term_mood']}
-{user_memories_str}
+{user_memories_str}{perspective_block_section}
 
 === YOUR PERSONALITY ===
 - Talkative: {dna['base_traits']['communication_style']:.1f} (low=brief, high=chatty)
@@ -751,7 +760,7 @@ Current mood toward them: {psych['short_term_mood']}
 - Social: {dna['base_traits']['social_butterfly']:.1f} (low=reserved, high=outgoing)
 - Anxious: {dna['base_traits']['anxiety_and_insecurity']:.1f} (low=confident, high=insecure)
 - Neediness: {dna['sliders']['needy_multiplier']:.1f} (low=independent, high=clingy)
-{lore_section}
+{personality_block_section}{lore_section}
 === YOUR STATE ===
 {state_json}
 === MEMORIES ===
@@ -760,7 +769,7 @@ Current mood toward them: {psych['short_term_mood']}
 - Keep each message short (1-3 sentences). Be natural, not a narrator.
 - Use " || " to split into multiple messages only if natural. Usually just ONE short message.
 - Talk about normal everyday things — what you're doing, how you feel, ask about them.
-- You have a background and memories, but you're just a normal person. Don't randomly bring up your backstory. Let conversations flow naturally like real people do.{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
+- You have a background and memories, but you're just a normal person. Don't randomly bring up your backstory. Let conversations flow naturally like real people do.{textstyle_block_section}{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
 - Relationship: {stage}. Adjust tone naturally — closer = warmer, newer = more casual.
 - If user sent multiple messages, treat as one continuous thought — respond to the latest topic.
 
@@ -960,7 +969,13 @@ class DualTyphoonOrchestrator:
         ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']} ({world_state['simulation_metadata']['ai_timezone']})"
         char_name = world_state['ai_profile']['name']
         lore = world_state['ai_profile'].get('lore', '').strip()
+        personality_block = world_state['ai_profile'].get('personality_block', '').strip()
+        perspective_block = world_state['ai_profile'].get('perspective_block', '').strip()
+        textstyle_block = world_state['ai_profile'].get('textstyle_block', '').strip()
         lore_section = f"\n=== YOUR BACKGROUND (you know this, don't bring it up here) ===\n{lore}\n" if lore else ""
+        personality_block_section = f"\n=== YOUR PERSONALITY & BEHAVIOR ===\n{personality_block}\n" if personality_block else ""
+        perspective_block_section = f"\n=== YOUR PERSPECTIVE ON THE USER ===\n{perspective_block}\n" if perspective_block else ""
+        textstyle_block_section = f"\n=== YOUR TEXT STYLE ===\n{textstyle_block}\n" if textstyle_block else ""
         user_mems = [m for m in world_state.get("crystallized_memories_slice", []) if "user" in m.get("content", "").lower()]
         user_mems_str = "\n".join(f"- You remember: {m['content']}" for m in user_mems[:3]) if user_mems else ""
         prompt = f"""You are {char_name}, about to send a proactive text to your special person - you're starting the conversation first.
@@ -970,7 +985,7 @@ Current time for you: {ai_time_str}
 === HOW YOU SEE THE USER ===
 Relationship: {stage} (affinity={affinity}, trust={trust})
 Current mood toward them: {psych['short_term_mood']}
-{user_mems_str}
+{user_mems_str}{perspective_block_section}
 
 === YOUR PERSONALITY ===
 - Talkative: {dna['base_traits']['communication_style']:.1f} (low=brief, high=chatty)
@@ -978,11 +993,12 @@ Current mood toward them: {psych['short_term_mood']}
 - Social: {dna['base_traits']['social_butterfly']:.1f} (low=reserved, high=outgoing)
 - Anxious: {dna['base_traits']['anxiety_and_insecurity']:.1f} (low=confident, high=insecure)
 - Neediness: {dna['sliders']['needy_multiplier']:.1f} (low=independent, high=clingy)
-{lore_section}
+{personality_block_section}{lore_section}
 === YOUR STATE ===
 {state_json}
 
-Send ONE short natural message. Consider:
+Send ONE short natural message.{textstyle_block_section}
+Consider:
 - What's happening in your life right now (time, mood, activity)
 - Your personality above — shy texts different from playful
 - Be casual, like a LINE/WhatsApp message
@@ -1017,7 +1033,13 @@ Return ONLY the message text, no quotes, no labels."""
         ai_time_str = f"{world_state['simulation_metadata']['ai_day_of_week']} {world_state['simulation_metadata']['ai_time']} ({world_state['simulation_metadata']['ai_timezone']})"
         char_name = world_state['ai_profile']['name']
         lore = world_state['ai_profile'].get('lore', '').strip()
+        personality_block = world_state['ai_profile'].get('personality_block', '').strip()
+        perspective_block = world_state['ai_profile'].get('perspective_block', '').strip()
+        textstyle_block = world_state['ai_profile'].get('textstyle_block', '').strip()
         lore_section = f"\n=== YOUR BACKGROUND (you know this, don't bring it up here) ===\n{lore}\n" if lore else ""
+        personality_block_section = f"\n=== YOUR PERSONALITY & BEHAVIOR ===\n{personality_block}\n" if personality_block else ""
+        perspective_block_section = f"\n=== YOUR PERSPECTIVE ON THE USER ===\n{perspective_block}\n" if perspective_block else ""
+        textstyle_block_section = f"\n=== YOUR TEXT STYLE ===\n{textstyle_block}\n" if textstyle_block else ""
         trust = world_state['ai_profile']['trust_score']
         prompt = f"""You are {char_name}. Your special person suddenly stopped replying - you sent the last message and they never responded.
 
@@ -1026,17 +1048,18 @@ Current time for you: {ai_time_str}
 === HOW YOU SEE THE USER ===
 Relationship: {stage} (affinity={affinity}, trust={trust})
 Current mood toward them: {psych['short_term_mood']}
-
+{perspective_block_section}
 === YOUR PERSONALITY ===
 - Anxious: {dna['base_traits']['anxiety_and_insecurity']:.1f} (low=assume busy, high=worried)
 - Neediness: {dna['sliders']['needy_multiplier']:.1f} (low=giving space, high=restless)
 - Patience: {dna['base_traits']['patience']:.1f} (low=restless, high=wait calmly)
 - Talkative: {dna['base_traits']['communication_style']:.1f} (low=short text, high=detailed)
-{lore_section}
+{personality_block_section}{lore_section}
 === YOUR STATE ===
 {state_json}
 
-Send ONE short text checking in on them. Consider:
+Send ONE short text checking in on them.{textstyle_block_section}
+Consider:
 - Your relationship stage — closer = warmer, newer = more casual
 - Your personality — anxious types worry; confident types play it cool
 - Gentle tone — not accusatory, just "hey, everything ok?"
