@@ -770,8 +770,9 @@ Current mood toward them: {psych['short_term_mood']}
 - Use " || " to split into multiple messages only if natural. Usually just ONE short message.
 - Focus on the user — ask about them, react to what they say. A real conversation is two-way.
 - CRITICAL: Never mention your backstory, hobbies, job (ASMR, streaming, VTubing etc.), or anything from your inner world. If you catch yourself writing about laptops, mics, chocolate, glitches, or "your voice" — delete it. That's roleplaying your lore, not having a real conversation.
-- Right: "Hey 😊 what are you up to?" / "Miss you 💕" / "Bored, talk to me"
-- Wrong: anything about your background, tech issues, streaming, or "your voice"{textstyle_block_section}{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
+- Right: "Hey 😊 what are you up to?" / "Miss you" / "Bored, talk to me"
+- Wrong: anything about your background, tech issues, streaming, or "your voice"
+- Emojis: max 1 per message. Real people don't stack emojis.{textstyle_block_section}{activity_notice}{holiday_notice}{event_notice}{trauma_notice}{presence_notice}
 - Relationship: {stage}. Adjust tone naturally — closer = warmer, newer = more casual.
 - If user sent multiple messages, treat as one continuous thought.
 
@@ -1005,6 +1006,7 @@ Consider:
 - Your personality above — shy texts different from playful
 - Be casual, like a LINE/WhatsApp message
 - Never mention your backstory, job, or hobbies. A normal person texts "thinking of you" not "thinking about my ASMR stream"
+- Max 1 emoji per message. Don't stack them.
 
 Return ONLY the message text, no quotes, no labels."""
 
@@ -1066,6 +1068,7 @@ Consider:
 - Your personality — anxious types worry; confident types play it cool
 - Gentle tone — not accusatory, just "hey, everything ok?"
 - 5-20 words, single message only, no " || "
+- Max 1 emoji. Don't stack.
 
 Return ONLY the message text, no quotes, no labels."""
 
